@@ -4,6 +4,7 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/src/core/models/delete_history_entry.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
+import 'package:picme/src/core/ui/app_coach.dart';
 import 'package:picme/src/features/home/presentation/history_screen.dart';
 import 'package:picme/src/features/home/presentation/settings_screen.dart';
 import 'package:picme/src/features/queue/presentation/delete_queue_screen.dart';
@@ -23,13 +24,19 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _queuePrefsKey = 'picme_delete_queue_ids';
   static const String _historyPrefsKey = 'picme_delete_history';
   static const String _keptPrefsKey = 'picme_kept_ids';
+  static const String _homeTourPrefsKey = 'picme_home_tour_done';
+  static const String _swipeTourPrefsKey = 'picme_swipe_tour_done';
 
   final GalleryRepository _repo = GalleryRepository();
   final List<MediaItem> _deleteQueue = [];
   final List<DeleteHistoryEntry> _deleteHistory = [];
   final Set<String> _keptIds = <String>{};
   final List<SwipeActionRecord> _actionHistory = [];
-  final TextEditingController _searchController = TextEditingController();
+
+  final GlobalKey _settingsKey = GlobalKey(debugLabel: 'home-settings');
+  final GlobalKey _historyKey = GlobalKey(debugLabel: 'home-history');
+  final GlobalKey _firstCategoryKey = GlobalKey(debugLabel: 'home-first-cat');
+  final GlobalKey _reviewNavKey = GlobalKey(debugLabel: 'home-review-nav');
 
   GalleryCategory _selectedCategory = GalleryCategory.allMedia;
   SortOption _selectedSort = SortOption.newestFirst;
@@ -54,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    AppCoach.dismiss();
     super.dispose();
   }
 
@@ -68,9 +75,67 @@ class _HomeScreenState extends State<HomeScreen> {
     if (state.isAuth || state.hasAccess) {
       await _hydrateQueueFromStorage();
       await _loadHomeData();
+      _maybeStartHomeTour();
     } else {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _maybeStartHomeTour({bool force = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!force && (prefs.getBool(_homeTourPrefsKey) ?? false)) return;
+    if (!mounted || _view != _AppView.home) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await AppCoach.show(
+      context,
+      steps: [
+        CoachStep(
+          targetKey: _settingsKey,
+          title: 'Ayarlar',
+          description:
+              'Buradan galeri izinlerini, kuyruğu ve tutulanları yönetebilirsin.',
+          shape: CoachShape.circle,
+          padding: const EdgeInsets.all(4),
+        ),
+        CoachStep(
+          targetKey: _firstCategoryKey,
+          title: 'Bir kategori seç',
+          description:
+              'Tüm Medya, Fotoğraflar, Videolar gibi kategorilerden birine dokunarak temizliğe başla.',
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          radius: 16,
+        ),
+        CoachStep(
+          targetKey: _historyKey,
+          title: 'Silme geçmişi',
+          description:
+              'Kalıcı olarak sildiğin paketlerin kaydını buradan görebilirsin.',
+          shape: CoachShape.circle,
+          padding: const EdgeInsets.all(4),
+        ),
+        CoachStep(
+          targetKey: _reviewNavKey,
+          title: 'Silme kuyruğu',
+          description:
+              'Sola kaydırdığın öğeler kuyrukta birikir; toplu kalıcı silmeyi buradan yaparsın.',
+          padding: const EdgeInsets.all(8),
+          radius: 14,
+        ),
+      ],
+    );
+    await prefs.setBool(_homeTourPrefsKey, true);
+  }
+
+  Future<void> _restartTours() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_homeTourPrefsKey, false);
+    await prefs.setBool(_swipeTourPrefsKey, false);
+    if (!mounted) return;
+    setState(() => _view = _AppView.home);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
+    await _maybeStartHomeTour(force: true);
   }
 
   Future<void> _loadHistory() async {
@@ -331,6 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : _BottomNavBar(
                 current: _view,
                 queueCount: _deleteQueue.length,
+                reviewKey: _reviewNavKey,
                 onHome: () => setState(() => _view = _AppView.home),
                 onQueue: () => setState(() => _view = _AppView.queue),
               ),
@@ -349,9 +415,11 @@ class _HomeScreenState extends State<HomeScreen> {
         recent: _recent,
         counts: _counts,
         selectedSort: _selectedSort,
-        searchController: _searchController,
         isLoading: _isLoading,
         errorMessage: _errorMessage,
+        settingsKey: _settingsKey,
+        historyKey: _historyKey,
+        firstCategoryKey: _firstCategoryKey,
         onSortChanged: (sort) {
           setState(() => _selectedSort = sort);
         },
@@ -375,6 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onBack: () => setState(() => _view = _AppView.home),
         onOpenQueue: () => setState(() => _view = _AppView.queue),
         queueCount: _deleteQueue.length,
+        tourPrefsKey: _swipeTourPrefsKey,
       );
     }
 
@@ -393,8 +462,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
         builder: (_) => SettingsScreen(
           queueCount: _deleteQueue.length,
           keptCount: _keptIds.length,
@@ -403,6 +472,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    if (result == 'restart_tour') {
+      _restartTours();
+    }
   }
 
   Future<void> _openHistory() async {
@@ -444,9 +516,11 @@ class _HomeView extends StatelessWidget {
     required this.recent,
     required this.counts,
     required this.selectedSort,
-    required this.searchController,
     required this.isLoading,
     required this.errorMessage,
+    required this.settingsKey,
+    required this.historyKey,
+    required this.firstCategoryKey,
     required this.onSortChanged,
     required this.onOpenSettings,
     required this.onOpenHistory,
@@ -456,9 +530,11 @@ class _HomeView extends StatelessWidget {
   final List<MediaItem> recent;
   final Map<GalleryCategory, int> counts;
   final SortOption selectedSort;
-  final TextEditingController searchController;
   final bool isLoading;
   final String? errorMessage;
+  final GlobalKey settingsKey;
+  final GlobalKey historyKey;
+  final GlobalKey firstCategoryKey;
   final ValueChanged<SortOption> onSortChanged;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHistory;
@@ -473,6 +549,7 @@ class _HomeView extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
+                key: settingsKey,
                 onPressed: onOpenSettings,
                 icon: const Icon(Icons.settings),
               ),
@@ -483,6 +560,7 @@ class _HomeView extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
+                key: historyKey,
                 onPressed: onOpenHistory,
                 icon: const Icon(Icons.history),
               ),
@@ -493,20 +571,6 @@ class _HomeView extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
             children: [
-              TextField(
-                controller: searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search photos, places, dates...',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(999),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
               SizedBox(
                 height: 40,
                 child: ListView.separated(
@@ -538,10 +602,11 @@ class _HomeView extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
-              for (final category in GalleryCategory.values)
+              for (final (i, category) in GalleryCategory.values.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _CategoryTile(
+                    key: i == 0 ? firstCategoryKey : null,
                     category: category,
                     count: counts[category] ?? 0,
                     onTap: () => onOpenCategory(category),
@@ -631,6 +696,7 @@ class _HomeView extends StatelessWidget {
 
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
+    super.key,
     required this.category,
     required this.count,
     required this.onTap,
@@ -697,12 +763,14 @@ class _BottomNavBar extends StatelessWidget {
   const _BottomNavBar({
     required this.current,
     required this.queueCount,
+    required this.reviewKey,
     required this.onHome,
     required this.onQueue,
   });
 
   final _AppView current;
   final int queueCount;
+  final GlobalKey reviewKey;
   final VoidCallback onHome;
   final VoidCallback onQueue;
 
@@ -723,6 +791,7 @@ class _BottomNavBar extends StatelessWidget {
             onTap: onHome,
           ),
           _NavItem(
+            key: reviewKey,
             label: 'Review',
             icon: Icons.auto_delete_outlined,
             active: current == _AppView.queue,
@@ -737,6 +806,7 @@ class _BottomNavBar extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
+    super.key,
     required this.label,
     required this.icon,
     required this.active,

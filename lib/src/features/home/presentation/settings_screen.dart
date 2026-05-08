@@ -66,6 +66,13 @@ class SettingsScreen extends StatelessWidget {
                   ),
           ),
           const Divider(height: 1),
+          ListTile(
+            title: const Text('Rehberi tekrar göster'),
+            subtitle: const Text('Uygulama içi tanıtım turunu yeniden başlat'),
+            trailing: const Icon(Icons.help_outline_rounded),
+            onTap: () => Navigator.of(context).pop('restart_tour'),
+          ),
+          const Divider(height: 1),
           const SizedBox(height: 16),
           Text(
             'Picme',

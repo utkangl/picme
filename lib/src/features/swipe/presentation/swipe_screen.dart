@@ -4,7 +4,9 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
+import 'package:picme/src/core/ui/app_coach.dart';
 import 'package:picme/src/features/swipe/domain/swipe_filters.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({
@@ -21,6 +23,7 @@ class SwipeScreen extends StatefulWidget {
     required this.onBack,
     required this.onOpenQueue,
     required this.queueCount,
+    required this.tourPrefsKey,
   });
 
   final List<MediaItem> media;
@@ -35,6 +38,7 @@ class SwipeScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenQueue;
   final int queueCount;
+  final String tourPrefsKey;
 
   @override
   State<SwipeScreen> createState() => _SwipeScreenState();
@@ -55,6 +59,11 @@ class _SwipeScreenState extends State<SwipeScreen>
 
   /// Progress bar için: kategori ilk yüklendiğindeki toplam item sayısı.
   int _initialTotal = 0;
+
+  bool _tourChecked = false;
+  final GlobalKey _cardKey = GlobalKey(debugLabel: 'swipe-card');
+  final GlobalKey _revertKey = GlobalKey(debugLabel: 'swipe-revert');
+  final GlobalKey _queueKey = GlobalKey(debugLabel: 'swipe-queue');
 
   @override
   void initState() {
@@ -86,8 +95,52 @@ class _SwipeScreenState extends State<SwipeScreen>
 
   @override
   void dispose() {
+    AppCoach.dismiss();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _maybeStartTour() async {
+    if (_tourChecked) return;
+    _tourChecked = true;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(widget.tourPrefsKey) ?? false) return;
+    if (!mounted || widget.media.isEmpty) {
+      _tourChecked = false;
+      return;
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await AppCoach.show(
+      context,
+      steps: [
+        CoachStep(
+          targetKey: _cardKey,
+          title: 'Karar ver',
+          description:
+              'Sola kaydır → silme kuyruğuna ekle. Sağa kaydır → tut. Tek dokun → büyük önizleme.',
+          padding: const EdgeInsets.all(0),
+          radius: 24,
+        ),
+        CoachStep(
+          targetKey: _revertKey,
+          title: 'Geri al',
+          description:
+              'Son hamleni buradan geri al. Sağa atılan sağdan, sola atılan soldan geri gelir.',
+          shape: CoachShape.circle,
+          padding: const EdgeInsets.all(4),
+        ),
+        CoachStep(
+          targetKey: _queueKey,
+          title: 'Silme kuyruğu',
+          description:
+              'Sola attıkların burada birikir. Hepsini gözden geçirip toplu kalıcı silme yapabilirsin.',
+          shape: CoachShape.circle,
+          padding: const EdgeInsets.all(6),
+        ),
+      ],
+    );
+    await prefs.setBool(widget.tourPrefsKey, true);
   }
 
   @override
@@ -177,6 +230,7 @@ class _SwipeScreenState extends State<SwipeScreen>
                     ),
                   ),
                   IconButton(
+                    key: _revertKey,
                     onPressed: widget.canRevert ? _onRevertPressed : null,
                     tooltip: 'Geri al',
                     icon: const Icon(Icons.undo_rounded),
@@ -191,6 +245,7 @@ class _SwipeScreenState extends State<SwipeScreen>
           right: 20,
           bottom: 30,
           child: FloatingActionButton(
+            key: _queueKey,
             heroTag: 'queue_fab',
             onPressed: widget.onOpenQueue,
             backgroundColor: Colors.white,
@@ -266,6 +321,9 @@ class _SwipeScreenState extends State<SwipeScreen>
     final current = widget.media.first;
     final next = widget.media.length > 1 ? widget.media[1] : null;
     _precacheUpcoming(context);
+    if (!_tourChecked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTour());
+    }
     final width = MediaQuery.sizeOf(context).width - 40;
     final dragProgress = _isUndoEntering
         ? 0.0
@@ -288,6 +346,7 @@ class _SwipeScreenState extends State<SwipeScreen>
               child: IgnorePointer(child: _MediaCard(item: next)),
             ),
           Positioned.fill(
+            key: _cardKey,
             child: GestureDetector(
               onTap: () => _openPreview(current),
               onPanStart: (_) {
