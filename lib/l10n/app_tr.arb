@@ -239,6 +239,15 @@
   "coachDone": "Tamam",
   "@coachDone": {"description": "Coach tooltip last step button"},
 
+  "coachStart": "Başla",
+  "@coachStart": {"description": "Coach tooltip last step button label that opens swipe"},
+
+  "coachHomeStartTitle": "Hadi başlayalım",
+  "@coachHomeStartTitle": {"description": "Coach step title - launches swipe"},
+
+  "coachHomeStartDesc": "Tüm Medya'ya dokun ve sola/sağa kaydırarak fotoğraflarını yönetmeye başla.",
+  "@coachHomeStartDesc": {"description": "Coach step description - call to action"},
+
   "coachHomeSettingsTitle": "Ayarlar",
   "@coachHomeSettingsTitle": {"description": "Coach step title"},
 
@@ -385,5 +394,112 @@
   "@keptListEmpty": {"description": "Empty state for kept list screen"},
 
   "unkeepTooltip": "Tutulanlardan çıkar",
-  "@unkeepTooltip": {"description": "Tooltip on remove button in kept list"}
+  "@unkeepTooltip": {"description": "Tooltip on remove button in kept list"},
+
+  "categoryNotFoundTitle": "Klasör bulunamadı",
+  "@categoryNotFoundTitle": {"description": "Empty state title when category folder doesn't exist on device"},
+
+  "categoryNotFoundSubtitle": "Bu cihazda \"{category}\" klasörü yok.",
+  "@categoryNotFoundSubtitle": {
+    "description": "Empty state subtitle when category folder doesn't exist",
+    "placeholders": {
+      "category": {"type": "String"}
+    }
+  },
+
+  "goBack": "Geri dön",
+  "@goBack": {"description": "Go back button label"},
+
+  "filterTitle": "Filtrele",
+  "@filterTitle": {"description": "Filter bottom sheet title"},
+
+  "filterDateLabel": "Tarih",
+  "@filterDateLabel": {"description": "Filter section: date"},
+
+  "filterSizeLabel": "Boyut",
+  "@filterSizeLabel": {"description": "Filter section: file size"},
+
+  "filterDateAll": "Hepsi",
+  "@filterDateAll": {"description": "Filter date preset: no filter"},
+
+  "filterDate1Year": "1 yıldan eski",
+  "@filterDate1Year": {"description": "Filter date preset: older than 1 year"},
+
+  "filterDate3Years": "3 yıldan eski",
+  "@filterDate3Years": {"description": "Filter date preset: older than 3 years"},
+
+  "filterDate5Years": "5 yıldan eski",
+  "@filterDate5Years": {"description": "Filter date preset: older than 5 years"},
+
+  "filterSizeAll": "Hepsi",
+  "@filterSizeAll": {"description": "Filter size preset: no filter"},
+
+  "filterSize10MB": "10 MB üzeri",
+  "@filterSize10MB": {"description": "Filter size preset: >10 MB"},
+
+  "filterSize50MB": "50 MB üzeri",
+  "@filterSize50MB": {"description": "Filter size preset: >50 MB"},
+
+  "filterSize100MB": "100 MB üzeri",
+  "@filterSize100MB": {"description": "Filter size preset: >100 MB"},
+
+  "filterReset": "Sıfırla",
+  "@filterReset": {"description": "Reset filters button"},
+
+  "filterApply": "Uygula",
+  "@filterApply": {"description": "Apply filters button"},
+
+  "filterActiveLabel": "{count} filtre aktif",
+  "@filterActiveLabel": {
+    "description": "Badge text when filters are active",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "rateAppTitle": "Uygulamayı değerlendir",
+  "@rateAppTitle": {"description": "Settings tile: rate the app"},
+
+  "rateAppSubtitle": "Play Store'da yıldız ver",
+  "@rateAppSubtitle": {"description": "Settings tile: rate app subtitle"},
+
+  "feedbackTitle": "Geri bildirim gönder",
+  "@feedbackTitle": {"description": "Settings tile: send feedback"},
+
+  "feedbackSubtitle": "Öneri ve şikayetlerinizi iletin",
+  "@feedbackSubtitle": {"description": "Settings tile: feedback subtitle"},
+
+  "homeHeroSavings": "Şu ana kadar {amount} alan açtın",
+  "@homeHeroSavings": {
+    "description": "Hero subtitle when user has saved storage",
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+
+  "historySavingsTitle": "Toplam tasarruf",
+  "@historySavingsTitle": {"description": "History summary card title"},
+
+  "historySavingsSubtitle": "{count} silme oturumunda",
+  "@historySavingsSubtitle": {
+    "description": "History summary card subtitle",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "historyItemDeletedWithSize": "{count} öğe silindi · {amount}",
+  "@historyItemDeletedWithSize": {
+    "description": "History entry description with size",
+    "placeholders": {
+      "count": {"type": "int"},
+      "amount": {"type": "String"}
+    }
+  },
+
+  "settingsTestCrashTitle": "Test Crash (geliştirici)",
+  "@settingsTestCrashTitle": {"description": "Hidden dev-only test crash button title"},
+
+  "settingsTestCrashSubtitle": "Crashlytics doğrulaması için uygulamayı düşür",
+  "@settingsTestCrashSubtitle": {"description": "Hidden dev-only test crash button subtitle"}
 }

@@ -494,6 +494,24 @@ abstract class AppLocalizations {
   /// **'Tamam'**
   String get coachDone;
 
+  /// Coach tooltip last step button label that opens swipe
+  ///
+  /// In tr, this message translates to:
+  /// **'Başla'**
+  String get coachStart;
+
+  /// Coach step title - launches swipe
+  ///
+  /// In tr, this message translates to:
+  /// **'Hadi başlayalım'**
+  String get coachHomeStartTitle;
+
+  /// Coach step description - call to action
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Medya\'ya dokun ve sola/sağa kaydırarak fotoğraflarını yönetmeye başla.'**
+  String get coachHomeStartDesc;
+
   /// Coach step title
   ///
   /// In tr, this message translates to:
@@ -733,6 +751,168 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Tutulanlardan çıkar'**
   String get unkeepTooltip;
+
+  /// Empty state title when category folder doesn't exist on device
+  ///
+  /// In tr, this message translates to:
+  /// **'Klasör bulunamadı'**
+  String get categoryNotFoundTitle;
+
+  /// Empty state subtitle when category folder doesn't exist
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu cihazda \"{category}\" klasörü yok.'**
+  String categoryNotFoundSubtitle(String category);
+
+  /// Go back button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri dön'**
+  String get goBack;
+
+  /// Filter bottom sheet title
+  ///
+  /// In tr, this message translates to:
+  /// **'Filtrele'**
+  String get filterTitle;
+
+  /// Filter section: date
+  ///
+  /// In tr, this message translates to:
+  /// **'Tarih'**
+  String get filterDateLabel;
+
+  /// Filter section: file size
+  ///
+  /// In tr, this message translates to:
+  /// **'Boyut'**
+  String get filterSizeLabel;
+
+  /// Filter date preset: no filter
+  ///
+  /// In tr, this message translates to:
+  /// **'Hepsi'**
+  String get filterDateAll;
+
+  /// Filter date preset: older than 1 year
+  ///
+  /// In tr, this message translates to:
+  /// **'1 yıldan eski'**
+  String get filterDate1Year;
+
+  /// Filter date preset: older than 3 years
+  ///
+  /// In tr, this message translates to:
+  /// **'3 yıldan eski'**
+  String get filterDate3Years;
+
+  /// Filter date preset: older than 5 years
+  ///
+  /// In tr, this message translates to:
+  /// **'5 yıldan eski'**
+  String get filterDate5Years;
+
+  /// Filter size preset: no filter
+  ///
+  /// In tr, this message translates to:
+  /// **'Hepsi'**
+  String get filterSizeAll;
+
+  /// Filter size preset: >10 MB
+  ///
+  /// In tr, this message translates to:
+  /// **'10 MB üzeri'**
+  String get filterSize10MB;
+
+  /// Filter size preset: >50 MB
+  ///
+  /// In tr, this message translates to:
+  /// **'50 MB üzeri'**
+  String get filterSize50MB;
+
+  /// Filter size preset: >100 MB
+  ///
+  /// In tr, this message translates to:
+  /// **'100 MB üzeri'**
+  String get filterSize100MB;
+
+  /// Reset filters button
+  ///
+  /// In tr, this message translates to:
+  /// **'Sıfırla'**
+  String get filterReset;
+
+  /// Apply filters button
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygula'**
+  String get filterApply;
+
+  /// Badge text when filters are active
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} filtre aktif'**
+  String filterActiveLabel(int count);
+
+  /// Settings tile: rate the app
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygulamayı değerlendir'**
+  String get rateAppTitle;
+
+  /// Settings tile: rate app subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Play Store\'da yıldız ver'**
+  String get rateAppSubtitle;
+
+  /// Settings tile: send feedback
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri bildirim gönder'**
+  String get feedbackTitle;
+
+  /// Settings tile: feedback subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Öneri ve şikayetlerinizi iletin'**
+  String get feedbackSubtitle;
+
+  /// Hero subtitle when user has saved storage
+  ///
+  /// In tr, this message translates to:
+  /// **'Şu ana kadar {amount} alan açtın'**
+  String homeHeroSavings(String amount);
+
+  /// History summary card title
+  ///
+  /// In tr, this message translates to:
+  /// **'Toplam tasarruf'**
+  String get historySavingsTitle;
+
+  /// History summary card subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} silme oturumunda'**
+  String historySavingsSubtitle(int count);
+
+  /// History entry description with size
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe silindi · {amount}'**
+  String historyItemDeletedWithSize(int count, String amount);
+
+  /// Hidden dev-only test crash button title
+  ///
+  /// In tr, this message translates to:
+  /// **'Test Crash (geliştirici)'**
+  String get settingsTestCrashTitle;
+
+  /// Hidden dev-only test crash button subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Crashlytics doğrulaması için uygulamayı düşür'**
+  String get settingsTestCrashSubtitle;
 }
 
 class _AppLocalizationsDelegate

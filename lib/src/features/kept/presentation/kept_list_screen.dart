@@ -40,7 +40,11 @@ class _KeptListScreenState extends State<KeptListScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.keptListTitle(_items.length))),
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text(l10n.keptListTitle(_items.length)),
+      ),
       body: _items.isEmpty
           ? Center(child: Text(l10n.keptListEmpty))
           : GridView.builder(

@@ -227,6 +227,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachDone => 'Done';
 
   @override
+  String get coachStart => 'Start';
+
+  @override
+  String get coachHomeStartTitle => 'Let\'s get started';
+
+  @override
+  String get coachHomeStartDesc =>
+      'Tap All Media and swipe left/right to start managing your photos.';
+
+  @override
   String get coachHomeSettingsTitle => 'Settings';
 
   @override
@@ -367,4 +377,95 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unkeepTooltip => 'Remove from kept';
+
+  @override
+  String get categoryNotFoundTitle => 'Folder not found';
+
+  @override
+  String categoryNotFoundSubtitle(String category) {
+    return 'No \"$category\" folder on this device.';
+  }
+
+  @override
+  String get goBack => 'Go back';
+
+  @override
+  String get filterTitle => 'Filter';
+
+  @override
+  String get filterDateLabel => 'Date';
+
+  @override
+  String get filterSizeLabel => 'Size';
+
+  @override
+  String get filterDateAll => 'Any';
+
+  @override
+  String get filterDate1Year => 'Older than 1 year';
+
+  @override
+  String get filterDate3Years => 'Older than 3 years';
+
+  @override
+  String get filterDate5Years => 'Older than 5 years';
+
+  @override
+  String get filterSizeAll => 'Any';
+
+  @override
+  String get filterSize10MB => 'Over 10 MB';
+
+  @override
+  String get filterSize50MB => 'Over 50 MB';
+
+  @override
+  String get filterSize100MB => 'Over 100 MB';
+
+  @override
+  String get filterReset => 'Reset';
+
+  @override
+  String get filterApply => 'Apply';
+
+  @override
+  String filterActiveLabel(int count) {
+    return '$count filter active';
+  }
+
+  @override
+  String get rateAppTitle => 'Rate the app';
+
+  @override
+  String get rateAppSubtitle => 'Leave a star on the Play Store';
+
+  @override
+  String get feedbackTitle => 'Send feedback';
+
+  @override
+  String get feedbackSubtitle => 'Share your suggestions and issues';
+
+  @override
+  String homeHeroSavings(String amount) {
+    return 'You\'ve freed up $amount so far';
+  }
+
+  @override
+  String get historySavingsTitle => 'Total savings';
+
+  @override
+  String historySavingsSubtitle(int count) {
+    return '$count delete sessions';
+  }
+
+  @override
+  String historyItemDeletedWithSize(int count, String amount) {
+    return '$count items · $amount';
+  }
+
+  @override
+  String get settingsTestCrashTitle => 'Test Crash (developer)';
+
+  @override
+  String get settingsTestCrashSubtitle => 'Force a crash to verify Crashlytics';
 }

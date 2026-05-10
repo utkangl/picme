@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:picme/l10n/app_localizations.dart';
 import 'package:picme/src/core/models/delete_history_entry.dart';
+import 'package:picme/src/core/util/bytes_format.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key, required this.entries});
@@ -10,6 +11,8 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final totalBytes =
+        entries.fold<int>(0, (sum, e) => sum + e.bytes);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -23,20 +26,123 @@ class HistoryScreen extends StatelessWidget {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                       physics: const ClampingScrollPhysics(),
-                      itemCount: entries.length,
+                      itemCount: entries.length + (totalBytes > 0 ? 1 : 0),
                       separatorBuilder: (context, index) =>
                           const SizedBox(height: 10),
                       itemBuilder: (context, index) {
-                        final entry = entries[index];
+                        if (totalBytes > 0 && index == 0) {
+                          return _SavingsCard(
+                            title: l10n.historySavingsTitle,
+                            subtitle: l10n.historySavingsSubtitle(
+                              entries.length,
+                            ),
+                            amount: formatBytes(totalBytes),
+                          );
+                        }
+                        final entry =
+                            entries[totalBytes > 0 ? index - 1 : index];
                         return _HistoryTile(
                           entry: entry,
-                          countLabel: l10n.historyItemDeleted(entry.count),
+                          countLabel: entry.bytes > 0
+                              ? l10n.historyItemDeletedWithSize(
+                                  entry.count,
+                                  formatBytes(entry.bytes),
+                                )
+                              : l10n.historyItemDeleted(entry.count),
                         );
                       },
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SavingsCard extends StatelessWidget {
+  const _SavingsCard({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+  });
+
+  final String title;
+  final String subtitle;
+  final String amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2A2A2A), Color(0xFF1F1F1F)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFA3D9B1).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.savings_rounded,
+              size: 22,
+              color: Color(0xFFA3D9B1),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

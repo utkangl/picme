@@ -107,6 +107,9 @@
   "coachSkip": "Skip",
   "coachNext": "Next",
   "coachDone": "Done",
+  "coachStart": "Start",
+  "coachHomeStartTitle": "Let's get started",
+  "coachHomeStartDesc": "Tap All Media and swipe left/right to start managing your photos.",
   "coachHomeSettingsTitle": "Settings",
   "coachHomeSettingsDesc": "Manage gallery permissions, queue, and kept items here.",
   "coachHomeCategoryTitle": "Choose a category",
@@ -181,5 +184,65 @@
     }
   },
   "keptListEmpty": "No kept items yet.",
-  "unkeepTooltip": "Remove from kept"
+  "unkeepTooltip": "Remove from kept",
+
+  "categoryNotFoundTitle": "Folder not found",
+  "categoryNotFoundSubtitle": "No \"{category}\" folder on this device.",
+  "@categoryNotFoundSubtitle": {
+    "placeholders": {
+      "category": {"type": "String"}
+    }
+  },
+  "goBack": "Go back",
+
+  "filterTitle": "Filter",
+  "filterDateLabel": "Date",
+  "filterSizeLabel": "Size",
+  "filterDateAll": "Any",
+  "filterDate1Year": "Older than 1 year",
+  "filterDate3Years": "Older than 3 years",
+  "filterDate5Years": "Older than 5 years",
+  "filterSizeAll": "Any",
+  "filterSize10MB": "Over 10 MB",
+  "filterSize50MB": "Over 50 MB",
+  "filterSize100MB": "Over 100 MB",
+  "filterReset": "Reset",
+  "filterApply": "Apply",
+  "filterActiveLabel": "{count} filter active",
+  "@filterActiveLabel": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "rateAppTitle": "Rate the app",
+  "rateAppSubtitle": "Leave a star on the Play Store",
+  "feedbackTitle": "Send feedback",
+  "feedbackSubtitle": "Share your suggestions and issues",
+
+  "homeHeroSavings": "You've freed up {amount} so far",
+  "@homeHeroSavings": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+
+  "historySavingsTitle": "Total savings",
+  "historySavingsSubtitle": "{count} delete sessions",
+  "@historySavingsSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "historyItemDeletedWithSize": "{count} items · {amount}",
+  "@historyItemDeletedWithSize": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "amount": {"type": "String"}
+    }
+  },
+
+  "settingsTestCrashTitle": "Test Crash (developer)",
+  "settingsTestCrashSubtitle": "Force a crash to verify Crashlytics"
 }

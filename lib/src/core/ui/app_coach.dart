@@ -13,6 +13,7 @@ class CoachStep {
     this.shape = CoachShape.roundedRect,
     this.padding = const EdgeInsets.all(8),
     this.radius = 16,
+    this.actionLabel,
   });
 
   final GlobalKey targetKey;
@@ -21,6 +22,10 @@ class CoachStep {
   final CoachShape shape;
   final EdgeInsets padding;
   final double radius;
+  /// Optional label that overrides the default "Done" / "Next" button text.
+  /// Useful for a final step where the action is something other than just
+  /// dismissing the tour (e.g. "Start" to launch a flow).
+  final String? actionLabel;
 }
 
 class AppCoach {
@@ -29,23 +34,27 @@ class AppCoach {
   static OverlayEntry? _entry;
   static _CoachOverlayState? _state;
 
-  static Future<void> show(
+  /// Shows the coach overlay and resolves to `true` when the user finishes
+  /// the tour by pressing the final action button, or `false` when the user
+  /// skips it. Useful when the caller wants to chain a follow-up action only
+  /// for users who completed the tour.
+  static Future<bool> show(
     BuildContext context, {
     required List<CoachStep> steps,
   }) async {
-    if (steps.isEmpty) return;
+    if (steps.isEmpty) return false;
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
-    if (overlay == null) return;
+    if (overlay == null) return false;
 
     await dismiss();
 
-    final completer = Completer<void>();
+    final completer = Completer<bool>();
     final entry = OverlayEntry(
       builder: (ctx) => _CoachOverlay(
         steps: steps,
         onMounted: (state) => _state = state,
-        onClosed: () {
-          if (!completer.isCompleted) completer.complete();
+        onClosed: (completed) {
+          if (!completer.isCompleted) completer.complete(completed);
         },
       ),
     );
@@ -54,14 +63,14 @@ class AppCoach {
     return completer.future;
   }
 
-  static Future<void> dismiss() async {
+  static Future<void> dismiss({bool completed = false}) async {
     final entry = _entry;
     final state = _state;
     if (entry == null) return;
     _entry = null;
     _state = null;
     if (state != null) {
-      await state.close();
+      await state.close(completed: completed);
     }
     if (entry.mounted) entry.remove();
   }
@@ -76,7 +85,7 @@ class _CoachOverlay extends StatefulWidget {
 
   final List<CoachStep> steps;
   final ValueChanged<_CoachOverlayState> onMounted;
-  final VoidCallback onClosed;
+  final ValueChanged<bool> onClosed;
 
   @override
   State<_CoachOverlay> createState() => _CoachOverlayState();
@@ -104,15 +113,15 @@ class _CoachOverlayState extends State<_CoachOverlay>
     super.dispose();
   }
 
-  Future<void> close() async {
+  Future<void> close({bool completed = false}) async {
     if (!mounted) return;
     await _fade.reverse();
-    widget.onClosed();
+    widget.onClosed(completed);
   }
 
   void _next() {
     if (_index >= widget.steps.length - 1) {
-      AppCoach.dismiss();
+      AppCoach.dismiss(completed: true);
       return;
     }
     setState(() => _index += 1);
@@ -218,6 +227,7 @@ class _CoachOverlayState extends State<_CoachOverlay>
       description: step.description,
       stepIndex: _index,
       stepCount: widget.steps.length,
+      actionLabel: step.actionLabel,
       onNext: _next,
     );
 
@@ -249,6 +259,7 @@ class _CoachTooltip extends StatelessWidget {
     required this.stepIndex,
     required this.stepCount,
     required this.onNext,
+    this.actionLabel,
   });
 
   final String title;
@@ -256,6 +267,7 @@ class _CoachTooltip extends StatelessWidget {
   final int stepIndex;
   final int stepCount;
   final VoidCallback onNext;
+  final String? actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +339,9 @@ class _CoachTooltip extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                child: Text(isLast ? l10n.coachDone : l10n.coachNext),
+                child: Text(
+                  actionLabel ?? (isLast ? l10n.coachDone : l10n.coachNext),
+                ),
               ),
             ),
           ],

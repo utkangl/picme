@@ -228,6 +228,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get coachDone => 'Tamam';
 
   @override
+  String get coachStart => 'Başla';
+
+  @override
+  String get coachHomeStartTitle => 'Hadi başlayalım';
+
+  @override
+  String get coachHomeStartDesc =>
+      'Tüm Medya\'ya dokun ve sola/sağa kaydırarak fotoğraflarını yönetmeye başla.';
+
+  @override
   String get coachHomeSettingsTitle => 'Ayarlar';
 
   @override
@@ -369,4 +379,96 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get unkeepTooltip => 'Tutulanlardan çıkar';
+
+  @override
+  String get categoryNotFoundTitle => 'Klasör bulunamadı';
+
+  @override
+  String categoryNotFoundSubtitle(String category) {
+    return 'Bu cihazda \"$category\" klasörü yok.';
+  }
+
+  @override
+  String get goBack => 'Geri dön';
+
+  @override
+  String get filterTitle => 'Filtrele';
+
+  @override
+  String get filterDateLabel => 'Tarih';
+
+  @override
+  String get filterSizeLabel => 'Boyut';
+
+  @override
+  String get filterDateAll => 'Hepsi';
+
+  @override
+  String get filterDate1Year => '1 yıldan eski';
+
+  @override
+  String get filterDate3Years => '3 yıldan eski';
+
+  @override
+  String get filterDate5Years => '5 yıldan eski';
+
+  @override
+  String get filterSizeAll => 'Hepsi';
+
+  @override
+  String get filterSize10MB => '10 MB üzeri';
+
+  @override
+  String get filterSize50MB => '50 MB üzeri';
+
+  @override
+  String get filterSize100MB => '100 MB üzeri';
+
+  @override
+  String get filterReset => 'Sıfırla';
+
+  @override
+  String get filterApply => 'Uygula';
+
+  @override
+  String filterActiveLabel(int count) {
+    return '$count filtre aktif';
+  }
+
+  @override
+  String get rateAppTitle => 'Uygulamayı değerlendir';
+
+  @override
+  String get rateAppSubtitle => 'Play Store\'da yıldız ver';
+
+  @override
+  String get feedbackTitle => 'Geri bildirim gönder';
+
+  @override
+  String get feedbackSubtitle => 'Öneri ve şikayetlerinizi iletin';
+
+  @override
+  String homeHeroSavings(String amount) {
+    return 'Şu ana kadar $amount alan açtın';
+  }
+
+  @override
+  String get historySavingsTitle => 'Toplam tasarruf';
+
+  @override
+  String historySavingsSubtitle(int count) {
+    return '$count silme oturumunda';
+  }
+
+  @override
+  String historyItemDeletedWithSize(int count, String amount) {
+    return '$count öğe silindi · $amount';
+  }
+
+  @override
+  String get settingsTestCrashTitle => 'Test Crash (geliştirici)';
+
+  @override
+  String get settingsTestCrashSubtitle =>
+      'Crashlytics doğrulaması için uygulamayı düşür';
 }

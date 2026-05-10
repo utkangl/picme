@@ -8,11 +8,15 @@ import 'package:picme/src/core/models/delete_history_entry.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
 import 'package:picme/src/core/ui/app_coach.dart';
+import 'package:picme/src/core/util/bytes_format.dart';
 import 'package:picme/src/features/home/presentation/history_screen.dart';
 import 'package:picme/src/features/home/presentation/settings_screen.dart';
 import 'package:picme/src/features/kept/presentation/kept_list_screen.dart';
 import 'package:picme/src/features/queue/presentation/delete_queue_screen.dart';
+import 'package:picme/src/core/data/review_prompter.dart';
+import 'package:picme/src/features/home/presentation/widgets/filters_sheet.dart';
 import 'package:picme/src/features/swipe/data/gallery_repository.dart';
+import 'package:picme/src/features/swipe/domain/media_filters.dart';
 import 'package:picme/src/features/swipe/domain/swipe_filters.dart';
 import 'package:picme/src/features/swipe/presentation/swipe_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,6 +50,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   GalleryCategory _selectedCategory = GalleryCategory.allMedia;
   SortOption _selectedSort = SortOption.newestFirst;
+  MediaFilters _activeFilters = MediaFilters.none;
+  /// When non-null, the swipe screen is browsing a specific app folder
+  /// (e.g. WhatsApp Images) instead of one of the predefined categories.
+  String? _selectedFolderId;
+  String? _selectedFolderName;
+  /// Discovered media folders/buckets on the device. Used to expose
+  /// app-specific media (Snapchat, WhatsApp, Telegram, Instagram, …) as
+  /// dynamic categories in the home grid.
+  List<({AssetPathEntity entity, int count})> _folders = const [];
   _AppView _view = _AppView.home;
 
   List<MediaItem> _media = [];
@@ -53,14 +66,26 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<GalleryCategory, int> _counts = {
     for (final c in GalleryCategory.values) c: 0,
   };
+  /// Total bytes per predefined category, lazily filled in by
+  /// [_loadCategorySizes] after the home grid is rendered. `null` means
+  /// "not resolved yet" — the tile shows a count-only label until then.
+  final Map<GalleryCategory, int> _categoryBytes = {};
+  /// Total bytes per discovered folder, keyed by [AssetPathEntity.id].
+  final Map<String, int> _folderBytes = {};
   bool _isLoading = true;
   int _currentMediaPage = 0;
   bool _hasMoreMedia = false;
   bool _isLoadingNextPage = false;
+  bool _categoryNotFound = false;
   PermissionState? _permissionState;
   String? _errorMessage;
 
   Set<String> get _queueIds => _deleteQueue.map((item) => item.id).toSet();
+
+  /// Cumulative byte total of every successful delete batch in the user's
+  /// history. Drives the dynamic hero subtitle and the history savings card.
+  int get _totalSavedBytes =>
+      _deleteHistory.fold<int>(0, (sum, e) => sum + e.bytes);
 
   @override
   void initState() {
@@ -105,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    await AppCoach.show(
+    final completed = await AppCoach.show(
       context,
       steps: [
         CoachStep(
@@ -136,9 +161,20 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(8),
           radius: 14,
         ),
+        CoachStep(
+          targetKey: _firstCategoryKey,
+          title: l10n.coachHomeStartTitle,
+          description: l10n.coachHomeStartDesc,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          radius: 16,
+          actionLabel: l10n.coachStart,
+        ),
       ],
     );
     await prefs.setBool(_homeTourPrefsKey, true);
+    if (completed && mounted && _view == _AppView.home) {
+      _openSwipeForCategory(GalleryCategory.allMedia);
+    }
   }
 
   Future<void> _restartTours() async {
@@ -232,12 +268,22 @@ class _HomeScreenState extends State<HomeScreen> {
       for (var i = 0; i < GalleryCategory.values.length; i++) {
         counts[GalleryCategory.values[i]] = countResults[i];
       }
+      // Discover app-specific folders (Snapchat, WhatsApp, Telegram, …) and
+      // surface them as dynamic categories alongside the predefined ones.
+      // We exclude buckets that already map to a predefined category — there
+      // is no point showing "Camera", "Screenshots", or "Download" twice.
+      final allFolders = await _repo.getFolders();
+      final folders = _filterPredefinedFolders(allFolders);
       if (!mounted) return;
       setState(() {
         _recent = _filterKept(_filterQueued(recent)).take(15).toList();
         _counts = counts;
+        _folders = folders;
         _isLoading = false;
       });
+      // Kick off size aggregation in the background. Results will appear in
+      // tiles as they resolve (each tile rebuilds via setState).
+      unawaited(_loadCategorySizes());
     } catch (error) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -245,6 +291,31 @@ class _HomeScreenState extends State<HomeScreen> {
         _errorMessage = l10n.deleteError(error.toString());
         _isLoading = false;
       });
+    }
+  }
+
+  /// Resolves total byte size for each predefined category and discovered
+  /// folder via the native MediaStore aggregate query, then folds the result
+  /// into [_categoryBytes] / [_folderBytes] one by one so the UI updates
+  /// progressively.
+  Future<void> _loadCategorySizes() async {
+    for (final cat in GalleryCategory.values) {
+      if ((_counts[cat] ?? 0) <= 0) continue;
+      try {
+        final bytes = await _repo.getCategoryBytes(cat);
+        if (!mounted) return;
+        setState(() => _categoryBytes[cat] = bytes);
+      } catch (_) {}
+    }
+    for (final folder in _folders) {
+      try {
+        final bytes = await _repo.getCategoryBytes(
+          GalleryCategory.allMedia,
+          folderPathId: folder.entity.id,
+        );
+        if (!mounted) return;
+        setState(() => _folderBytes[folder.entity.id] = bytes);
+      } catch (_) {}
     }
   }
 
@@ -260,15 +331,35 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
       _currentMediaPage = 0;
       _hasMoreMedia = false;
+      _categoryNotFound = false;
     });
     try {
+      // Check folder existence first for named categories.
+      final exists = await _repo.categoryExists(
+        _selectedCategory,
+        folderPathId: _selectedFolderId,
+      );
+      if (!exists) {
+        if (!mounted) return;
+        setState(() {
+          _media = [];
+          _categoryNotFound = true;
+          _isLoading = false;
+        });
+        return;
+      }
       final items = await _repo.getMedia(
         category: _selectedCategory,
         sortOption: _selectedSort,
         page: 0,
         pageSize: GalleryRepository.defaultPageSize,
+        filters: _activeFilters,
+        folderPathId: _selectedFolderId,
       );
-      final totalCount = await _repo.getCount(_selectedCategory);
+      final totalCount = await _repo.getCount(
+        _selectedCategory,
+        folderPathId: _selectedFolderId,
+      );
       if (!mounted) return;
       setState(() {
         _media = _orderForSwipe(_filterQueued(items));
@@ -297,6 +388,8 @@ class _HomeScreenState extends State<HomeScreen> {
         sortOption: _selectedSort,
         page: nextPage,
         pageSize: GalleryRepository.defaultPageSize,
+        filters: _activeFilters,
+        folderPathId: _selectedFolderId,
       );
       if (!mounted) return;
       final newItems = _filterQueued(items);
@@ -351,9 +444,40 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openSwipeForCategory(GalleryCategory category) {
     setState(() {
       _selectedCategory = category;
+      _selectedFolderId = null;
+      _selectedFolderName = null;
       _view = _AppView.swipe;
     });
     _loadMedia();
+  }
+
+  void _openSwipeForFolder(AssetPathEntity folder) {
+    setState(() {
+      _selectedCategory = GalleryCategory.allMedia;
+      _selectedFolderId = folder.id;
+      _selectedFolderName = folder.name;
+      _view = _AppView.swipe;
+    });
+    _loadMedia();
+  }
+
+  /// Filters out buckets whose names match the predefined categories
+  /// (Screenshots, Downloads) so we don't display the same folder twice.
+  List<({AssetPathEntity entity, int count})> _filterPredefinedFolders(
+    List<({AssetPathEntity entity, int count})> all,
+  ) {
+    const predefinedNames = <String>[
+      'screenshots',
+      'screenshot',
+      'download',
+      'downloads',
+    ];
+    return all.where((f) {
+      final lower = f.entity.name.toLowerCase();
+      return !predefinedNames.any(
+        (name) => lower == name || lower.contains(name),
+      );
+    }).toList();
   }
 
   void _addToQueue(MediaItem item) {
@@ -449,6 +573,15 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final deletedIds = await _repo.deleteItems(toDelete);
       if (!mounted) return;
+      // Sum bytes for items that actually got deleted. Items whose size
+      // wasn't resolved (fileSizeInBytes == null) contribute 0 — better than
+      // throwing or showing an inflated number. _warmDeckSizes typically
+      // resolves head-of-deck items long before they reach the queue, so
+      // most batches will carry accurate byte totals.
+      final deletedSet = deletedIds.toSet();
+      final totalBytes = toDelete
+          .where((it) => deletedSet.contains(it.id))
+          .fold<int>(0, (sum, it) => sum + (it.fileSizeInBytes ?? 0));
       setState(() {
         _deleteQueue.removeWhere((item) => deletedIds.contains(item.id));
         _media.removeWhere((item) => deletedIds.contains(item.id));
@@ -461,6 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
           DeleteHistoryEntry(
             deletedAt: DateTime.now(),
             count: deletedIds.length,
+            bytes: totalBytes,
           ),
         );
       });
@@ -470,6 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.itemsDeleted(deletedIds.length))),
       );
+      unawaited(ReviewPrompter.recordBatchAndMaybePrompt());
     } catch (error) {
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
@@ -492,6 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         body: SafeArea(child: body),
         bottomNavigationBar: _view == _AppView.swipe
             ? null
@@ -526,7 +662,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _HomeView(
               recent: _recent,
               counts: _counts,
+              folders: _folders,
+              categoryBytes: _categoryBytes,
+              folderBytes: _folderBytes,
+              totalSavedBytes: _totalSavedBytes,
               selectedSort: _selectedSort,
+              activeFilters: _activeFilters,
               isLoading: _isLoading,
               errorMessage: _errorMessage,
               queueCount: _deleteQueue.length,
@@ -536,10 +677,18 @@ class _HomeScreenState extends State<HomeScreen> {
               firstCategoryKey: _firstCategoryKey,
               onSortChanged: (sort) {
                 setState(() => _selectedSort = sort);
+                _loadMedia();
+              },
+              onFiltersChanged: (filters) {
+                setState(() => _activeFilters = filters);
+                _loadMedia();
               },
               onOpenSettings: _openSettings,
               onOpenHistory: _openHistory,
               onOpenCategory: _openSwipeForCategory,
+              onOpenFolder: _openSwipeForFolder,
+              onOpenQueue: _openQueueScreen,
+              onOpenKept: _openKeptList,
             ),
           ),
         ],
@@ -562,6 +711,8 @@ class _HomeScreenState extends State<HomeScreen> {
         queueCount: _deleteQueue.length,
         tourPrefsKey: _swipeTourPrefsKey,
         onLoadMore: _hasMoreMedia ? _loadNextMediaPage : null,
+        categoryNotFound: _categoryNotFound,
+        displayTitle: _selectedFolderName,
       );
     }
 
@@ -640,6 +791,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Opens the delete-queue review screen as a pushed route so it gets the
+  /// standard slide-in transition (matching the Kept list flow). The bottom
+  /// nav still uses the in-place `_view = _AppView.queue` swap, so home and
+  /// queue continue to feel like sibling tabs from the nav bar.
+  ///
+  /// Wraps the screen in a [StatefulBuilder] so that mutations from
+  /// [_removeFromQueue] / [_confirmDeleteQueue] cause the pushed widget to
+  /// rebuild — the route was created lazily, so home's outer setState alone
+  /// wouldn't reach it.
+  Future<void> _openQueueScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => StatefulBuilder(
+          builder: (innerContext, innerSetState) {
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: DeleteQueueScreen(
+                queue: _deleteQueue,
+                onRemove: (item) {
+                  _removeFromQueue(item);
+                  innerSetState(() {});
+                },
+                onConfirmDelete: () async {
+                  await _confirmDeleteQueue();
+                  if (innerContext.mounted) {
+                    Navigator.of(innerContext).pop();
+                  }
+                },
+                onClose: () => Navigator.of(routeContext).pop(),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
   void _clearQueueFromSettings() {
     setState(() {
       _deleteQueue.clear();
@@ -670,7 +860,12 @@ class _HomeView extends StatelessWidget {
   const _HomeView({
     required this.recent,
     required this.counts,
+    required this.folders,
+    required this.categoryBytes,
+    required this.folderBytes,
+    required this.totalSavedBytes,
     required this.selectedSort,
+    required this.activeFilters,
     required this.isLoading,
     required this.errorMessage,
     required this.queueCount,
@@ -679,14 +874,25 @@ class _HomeView extends StatelessWidget {
     required this.historyKey,
     required this.firstCategoryKey,
     required this.onSortChanged,
+    required this.onFiltersChanged,
     required this.onOpenSettings,
     required this.onOpenHistory,
     required this.onOpenCategory,
+    required this.onOpenFolder,
+    required this.onOpenQueue,
+    required this.onOpenKept,
   });
 
   final List<MediaItem> recent;
   final Map<GalleryCategory, int> counts;
+  final List<({AssetPathEntity entity, int count})> folders;
+  final Map<GalleryCategory, int> categoryBytes;
+  final Map<String, int> folderBytes;
+  /// Cumulative byte total of every successful delete batch so far.
+  /// Drives the hero subtitle ("You've freed up 1.4 GB so far").
+  final int totalSavedBytes;
   final SortOption selectedSort;
+  final MediaFilters activeFilters;
   final bool isLoading;
   final String? errorMessage;
   final int queueCount;
@@ -695,14 +901,25 @@ class _HomeView extends StatelessWidget {
   final GlobalKey historyKey;
   final GlobalKey firstCategoryKey;
   final ValueChanged<SortOption> onSortChanged;
+  final ValueChanged<MediaFilters> onFiltersChanged;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHistory;
   final ValueChanged<GalleryCategory> onOpenCategory;
+  final ValueChanged<AssetPathEntity> onOpenFolder;
+  final VoidCallback onOpenQueue;
+  final VoidCallback onOpenKept;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final totalMedia = counts[GalleryCategory.allMedia] ?? 0;
+    // Show cumulative saved bytes as the hero subtitle once the user has
+    // actually deleted something, otherwise fall back to the static "what
+    // is this app" tagline. This also acts as a soft motivator: the longer
+    // you use Picme, the bigger the number gets.
+    final subtitleText = totalSavedBytes > 0
+        ? l10n.homeHeroSavings(formatBytes(totalSavedBytes))
+        : l10n.homeHeroSubtitle;
 
     return ListView(
       physics: const ClampingScrollPhysics(),
@@ -717,26 +934,49 @@ class _HomeView extends StatelessWidget {
         const SizedBox(height: 18),
         _HeroCard(
           title: l10n.homeHeroTitle,
-          subtitle: l10n.homeHeroSubtitle,
+          subtitle: subtitleText,
           totalCount: totalMedia,
           queuedCount: queueCount,
           keptCount: keptCount,
           totalLabel: l10n.statsTotal,
           queuedLabel: l10n.statsQueued,
           keptLabel: l10n.statsKept,
+          onTapQueued: queueCount > 0 ? onOpenQueue : null,
+          onTapKept: keptCount > 0 ? onOpenKept : null,
         ),
         const SizedBox(height: 22),
-        _SortSegments(
-          selected: selectedSort,
-          onChanged: onSortChanged,
+        Row(
+          children: [
+            Expanded(
+              child: _SortSegments(
+                selected: selectedSort,
+                onChanged: onSortChanged,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FilterChip(
+              activeFilters: activeFilters,
+              onTap: () async {
+                final updated = await showFiltersSheet(
+                  context,
+                  activeFilters,
+                );
+                if (updated != null) onFiltersChanged(updated);
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         _SectionHeader(label: l10n.categories),
         const SizedBox(height: 12),
         _CategoryGrid(
           counts: counts,
+          folders: folders,
+          categoryBytes: categoryBytes,
+          folderBytes: folderBytes,
           firstKey: firstCategoryKey,
           onTap: onOpenCategory,
+          onTapFolder: onOpenFolder,
         ),
         const SizedBox(height: 24),
         _SectionHeader(label: l10n.recent),
@@ -858,6 +1098,8 @@ class _HeroCard extends StatelessWidget {
     required this.totalLabel,
     required this.queuedLabel,
     required this.keptLabel,
+    this.onTapQueued,
+    this.onTapKept,
   });
 
   final String title;
@@ -868,6 +1110,8 @@ class _HeroCard extends StatelessWidget {
   final String totalLabel;
   final String queuedLabel;
   final String keptLabel;
+  final VoidCallback? onTapQueued;
+  final VoidCallback? onTapKept;
 
   @override
   Widget build(BuildContext context) {
@@ -931,6 +1175,7 @@ class _HeroCard extends StatelessWidget {
                   value: queuedCount,
                   label: queuedLabel,
                   accent: const Color(0xFFE07A5F),
+                  onTap: onTapQueued,
                 ),
               ),
               Container(
@@ -943,6 +1188,7 @@ class _HeroCard extends StatelessWidget {
                   value: keptCount,
                   label: keptLabel,
                   accent: const Color(0xFFA3D9B1),
+                  onTap: onTapKept,
                 ),
               ),
             ],
@@ -958,15 +1204,17 @@ class _HeroStat extends StatelessWidget {
     required this.value,
     required this.label,
     required this.accent,
+    this.onTap,
   });
 
   final int value;
   final String label;
   final Color accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final column = Column(
       children: [
         Text(
           _formatCount(value),
@@ -987,6 +1235,15 @@ class _HeroStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+    if (onTap == null) return column;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: column,
+      ),
     );
   }
 
@@ -1051,6 +1308,55 @@ class _SortSegments extends StatelessWidget {
   }
 }
 
+/// Compact filter icon button with an active-count badge.
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.activeFilters, required this.onTap});
+
+  final MediaFilters activeFilters;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isActive = activeFilters.isActive;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color(0xFF1F1F1F)
+              : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tune_rounded,
+              size: 16,
+              color: isActive ? Colors.white : const Color(0xFF1F1F1F),
+            ),
+            if (isActive) ...[
+              const SizedBox(width: 4),
+              Text(
+                l10n.filterActiveLabel(activeFilters.activeCount),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label});
 
@@ -1073,16 +1379,27 @@ class _SectionHeader extends StatelessWidget {
 class _CategoryGrid extends StatelessWidget {
   const _CategoryGrid({
     required this.counts,
+    required this.folders,
+    required this.categoryBytes,
+    required this.folderBytes,
     required this.firstKey,
     required this.onTap,
+    required this.onTapFolder,
   });
 
   final Map<GalleryCategory, int> counts;
+  final List<({AssetPathEntity entity, int count})> folders;
+  final Map<GalleryCategory, int> categoryBytes;
+  final Map<String, int> folderBytes;
   final GlobalKey firstKey;
   final ValueChanged<GalleryCategory> onTap;
+  final ValueChanged<AssetPathEntity> onTapFolder;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final categoryCount = GalleryCategory.values.length;
+    final total = categoryCount + folders.length;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1090,99 +1407,39 @@ class _CategoryGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        mainAxisExtent: 108,
+        mainAxisExtent: 116,
       ),
-      itemCount: GalleryCategory.values.length,
+      itemCount: total,
       itemBuilder: (context, i) {
-        final category = GalleryCategory.values[i];
-        return _CategoryTile(
-          key: i == 0 ? firstKey : null,
-          category: category,
-          count: counts[category] ?? 0,
-          onTap: () => onTap(category),
+        if (i < categoryCount) {
+          final category = GalleryCategory.values[i];
+          return _BrowseTile(
+            key: i == 0 ? firstKey : null,
+            label: category.labelOf(l10n),
+            count: counts[category] ?? 0,
+            bytes: categoryBytes[category],
+            icon: _CategoryTile._iconFor(category),
+            palette: _CategoryTile._paletteFor(category),
+            onTap: () => onTap(category),
+          );
+        }
+        final folder = folders[i - categoryCount];
+        return _BrowseTile(
+          label: folder.entity.name,
+          count: folder.count,
+          bytes: folderBytes[folder.entity.id],
+          icon: _CategoryTile._iconForFolder(folder.entity.name),
+          palette: _CategoryTile._paletteForFolder(folder.entity.name),
+          onTap: () => onTapFolder(folder.entity),
         );
       },
     );
   }
 }
 
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    super.key,
-    required this.category,
-    required this.count,
-    required this.onTap,
-  });
-
-  final GalleryCategory category;
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final palette = _paletteFor(category);
-    return Material(
-      color: Colors.white.withValues(alpha: 0.72),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: palette.bg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _categoryIcon(category),
-                  size: 20,
-                  color: palette.fg,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                category.labelOf(l10n),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1F1F1F),
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _formatCount(count),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF8A8A8A),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static String _formatCount(int n) {
-    if (n >= 1000) {
-      final k = n / 1000;
-      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
-    }
-    return n.toString();
-  }
-
-  static IconData _categoryIcon(GalleryCategory category) {
+/// Internal helpers shared between the predefined-category and folder tiles.
+abstract class _CategoryTile {
+  static IconData _iconFor(GalleryCategory category) {
     switch (category) {
       case GalleryCategory.allMedia:
         return Icons.photo_library_rounded;
@@ -1211,7 +1468,143 @@ class _CategoryTile extends StatelessWidget {
         return const _Palette(Color(0xFFD9ECFF), Color(0xFF3D7CC9));
     }
   }
+
+  static IconData _iconForFolder(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('whatsapp')) return Icons.chat_rounded;
+    if (lower.contains('telegram')) return Icons.send_rounded;
+    if (lower.contains('snap')) return Icons.bolt_rounded;
+    if (lower.contains('instagram')) return Icons.camera_alt_rounded;
+    if (lower.contains('camera') || lower.contains('dcim')) {
+      return Icons.photo_camera_rounded;
+    }
+    if (lower.contains('movie') || lower.contains('video')) {
+      return Icons.movie_rounded;
+    }
+    if (lower.contains('picture')) return Icons.image_rounded;
+    if (lower.contains('discord')) return Icons.forum_rounded;
+    if (lower.contains('signal')) return Icons.lock_rounded;
+    return Icons.folder_rounded;
+  }
+
+  /// Stable color for an arbitrary folder name. Hashes the name into a fixed
+  /// palette so the same folder gets the same color across launches without
+  /// requiring us to enumerate every possible app.
+  static _Palette _paletteForFolder(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('whatsapp')) {
+      return const _Palette(Color(0xFFD8F0E0), Color(0xFF22A06B));
+    }
+    if (lower.contains('telegram')) {
+      return const _Palette(Color(0xFFD9ECFF), Color(0xFF2AABEE));
+    }
+    if (lower.contains('snap')) {
+      return const _Palette(Color(0xFFFFF6CC), Color(0xFFEEC400));
+    }
+    if (lower.contains('instagram')) {
+      return const _Palette(Color(0xFFFCE0E8), Color(0xFFC13584));
+    }
+    if (lower.contains('camera') || lower.contains('dcim')) {
+      return const _Palette(Color(0xFFFCE3DA), Color(0xFFE07A5F));
+    }
+    if (lower.contains('discord')) {
+      return const _Palette(Color(0xFFE0E3FA), Color(0xFF5865F2));
+    }
+    const palettes = <_Palette>[
+      _Palette(Color(0xFFE6DFFF), Color(0xFF6E5BC7)),
+      _Palette(Color(0xFFD8F0E0), Color(0xFF3F9E68)),
+      _Palette(Color(0xFFD9ECFF), Color(0xFF3D7CC9)),
+      _Palette(Color(0xFFFFE2E5), Color(0xFFD45D6E)),
+      _Palette(Color(0xFFFFF1D6), Color(0xFFB97A1E)),
+      _Palette(Color(0xFFE7F0E1), Color(0xFF6B8E5A)),
+    ];
+    return palettes[name.hashCode.abs() % palettes.length];
+  }
 }
+
+class _BrowseTile extends StatelessWidget {
+  const _BrowseTile({
+    super.key,
+    required this.label,
+    required this.count,
+    required this.bytes,
+    required this.icon,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final int? bytes;
+  final IconData icon;
+  final _Palette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final countLabel = _formatCount(count);
+    final sizeLabel = bytes != null && bytes! > 0 ? formatBytes(bytes!) : null;
+    return Material(
+      color: Colors.white.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: palette.bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: palette.fg),
+              ),
+              const Spacer(),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F1F1F),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                sizeLabel == null
+                    ? countLabel
+                    : '$countLabel · $sizeLabel',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF8A8A8A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _formatCount(int n) {
+    if (n >= 1000) {
+      final k = n / 1000;
+      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
+    }
+    return n.toString();
+  }
+}
+
 
 class _Palette {
   const _Palette(this.bg, this.fg);

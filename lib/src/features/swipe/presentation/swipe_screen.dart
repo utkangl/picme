@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -9,6 +11,7 @@ import 'package:picme/src/core/ui/app_coach.dart';
 import 'package:picme/src/features/swipe/domain/swipe_filters.dart';
 import 'package:picme/src/features/swipe/presentation/swipe_intro_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player/video_player.dart';
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({
@@ -27,12 +30,22 @@ class SwipeScreen extends StatefulWidget {
     required this.queueCount,
     required this.tourPrefsKey,
     this.onLoadMore,
+    this.categoryNotFound = false,
+    this.displayTitle,
   });
 
   final List<MediaItem> media;
   final GalleryCategory category;
   final bool isLoading;
   final String? errorMessage;
+  /// True when the named folder for this category doesn't exist on the device
+  /// (e.g. no "Screenshots" folder). Shows a specific empty state instead of
+  /// the generic "all scanned" message.
+  final bool categoryNotFound;
+  /// Optional override for the title shown in the swipe header. When the user
+  /// is browsing a dynamically-discovered folder (e.g. "WhatsApp Images") we
+  /// pass the folder name here instead of falling back to the category label.
+  final String? displayTitle;
   final ValueChanged<MediaItem> onSwipeLeft;
   final ValueChanged<MediaItem> onSwipeRight;
   final SwipeAction? Function() onRevertLast;
@@ -246,9 +259,10 @@ class _SwipeScreenState extends State<SwipeScreen>
                   ),
                   Expanded(
                     child: Text(
-                      widget.category.labelOf(
-                        AppLocalizations.of(context)!,
-                      ),
+                      widget.displayTitle ??
+                          widget.category.labelOf(
+                            AppLocalizations.of(context)!,
+                          ),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
@@ -323,18 +337,50 @@ class _SwipeScreenState extends State<SwipeScreen>
 
     if (widget.media.isEmpty) {
       final l10n = AppLocalizations.of(context)!;
+      if (widget.categoryNotFound) {
+        return _CategoryNotFoundState(
+          category: widget.displayTitle ?? widget.category.labelOf(l10n),
+          onBack: widget.onBack,
+          l10n: l10n,
+        );
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.done_all_rounded, size: 56),
-            const SizedBox(height: 12),
-            Text(l10n.allScanned, style: const TextStyle(fontSize: 16)),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.done_all_rounded,
+                size: 36,
+                color: Color(0xFF1F1F1F),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.allScanned,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F1F1F),
+              ),
+            ),
             const SizedBox(height: 12),
             if (widget.canRevert)
               FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1F1F1F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 onPressed: _onRevertPressed,
-                icon: const Icon(Icons.undo_rounded),
+                icon: const Icon(Icons.undo_rounded, size: 18),
                 label: Text(l10n.undoLastMove),
               ),
           ],
@@ -399,6 +445,7 @@ class _SwipeScreenState extends State<SwipeScreen>
                       item: current,
                       dragDx: _isUndoEntering ? 0 : _dragOffset.dx,
                       width: width,
+                      autoplayVideo: true,
                     ),
                   ),
                 ),
@@ -788,11 +835,21 @@ class _HintChip extends StatelessWidget {
 }
 
 class _MediaCard extends StatelessWidget {
-  const _MediaCard({required this.item, this.dragDx = 0, this.width = 1});
+  const _MediaCard({
+    required this.item,
+    this.dragDx = 0,
+    this.width = 1,
+    this.autoplayVideo = false,
+  });
 
   final MediaItem item;
   final double dragDx;
   final double width;
+  /// When `true` and [item] is a video, the card embeds an inline
+  /// [VideoPlayer] that plays muted in a loop. We only enable this for the
+  /// top card so the under-card (preload) doesn't burn battery decoding two
+  /// videos at once.
+  final bool autoplayVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -814,19 +871,25 @@ class _MediaCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image(
-                image: AssetEntityImageProvider(
-                  item.asset,
-                  isOriginal: false,
-                  thumbnailSize: const ThumbnailSize.square(800),
+              if (isVideo && autoplayVideo)
+                _InlineVideoPlayer(
+                  asset: item.asset,
+                  key: ValueKey('video-${item.id}'),
+                )
+              else
+                Image(
+                  image: AssetEntityImageProvider(
+                    item.asset,
+                    isOriginal: false,
+                    thumbnailSize: const ThumbnailSize.square(800),
+                  ),
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => const Center(
+                    child: Icon(Icons.broken_image_outlined, size: 64),
+                  ),
                 ),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                errorBuilder: (_, _, _) => const Center(
-                  child: Icon(Icons.broken_image_outlined, size: 64),
-                ),
-              ),
-              if (isVideo)
+              if (isVideo && !autoplayVideo)
                 const Center(
                   child: Icon(
                     Icons.play_circle_outline_rounded,
@@ -890,6 +953,109 @@ class _MediaCard extends StatelessWidget {
   }
 }
 
+/// Inline, muted-and-looping video preview that fits the swipe card.
+///
+/// Resolves the underlying [File] from `photo_manager` lazily and disposes
+/// the [VideoPlayerController] when the card is rebuilt out (e.g. when the
+/// next video becomes the top card). A blurred image of the same asset is
+/// shown while the player is initializing so the card never goes blank.
+class _InlineVideoPlayer extends StatefulWidget {
+  const _InlineVideoPlayer({super.key, required this.asset});
+
+  final AssetEntity asset;
+
+  @override
+  State<_InlineVideoPlayer> createState() => _InlineVideoPlayerState();
+}
+
+class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final File? file = await widget.asset.file;
+      if (!mounted || file == null) {
+        if (mounted) setState(() => _failed = true);
+        return;
+      }
+      final controller = VideoPlayerController.file(file);
+      _controller = controller;
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      await controller.setVolume(0);
+      await controller.setLooping(true);
+      await controller.play();
+      setState(() => _ready = true);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final placeholder = Image(
+      image: AssetEntityImageProvider(
+        widget.asset,
+        isOriginal: false,
+        thumbnailSize: const ThumbnailSize.square(800),
+      ),
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const Center(
+        child: Icon(Icons.videocam_off_rounded, size: 64),
+      ),
+    );
+
+    if (_failed || controller == null || !_ready) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          placeholder,
+          if (!_failed)
+            const Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.cover,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: controller.value.size.width,
+        height: controller.value.size.height,
+        child: VideoPlayer(controller),
+      ),
+    );
+  }
+}
+
 class _PreviewScreen extends StatelessWidget {
   const _PreviewScreen({required this.item});
 
@@ -897,6 +1063,7 @@ class _PreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isVideo = item.type == MediaType.video;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(backgroundColor: Colors.transparent),
@@ -906,16 +1073,188 @@ class _PreviewScreen extends StatelessWidget {
         child: Center(
           child: GestureDetector(
             onTap: () {},
-            child: InteractiveViewer(
-              maxScale: 4,
-              child: Image(
-                image: AssetEntityImageProvider(item.asset, isOriginal: true),
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) =>
-                    const Icon(Icons.broken_image_outlined, size: 80),
+            child: isVideo
+                ? _FullScreenVideo(asset: item.asset)
+                : InteractiveViewer(
+                    maxScale: 4,
+                    child: Image(
+                      image: AssetEntityImageProvider(
+                        item.asset,
+                        isOriginal: true,
+                      ),
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.broken_image_outlined, size: 80),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenVideo extends StatefulWidget {
+  const _FullScreenVideo({required this.asset});
+
+  final AssetEntity asset;
+
+  @override
+  State<_FullScreenVideo> createState() => _FullScreenVideoState();
+}
+
+class _FullScreenVideoState extends State<_FullScreenVideo> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final file = await widget.asset.file;
+      if (!mounted || file == null) return;
+      final c = VideoPlayerController.file(file);
+      _controller = c;
+      await c.initialize();
+      if (!mounted) {
+        await c.dispose();
+        return;
+      }
+      await c.setLooping(true);
+      await c.play();
+      setState(() => _ready = true);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _controller;
+    if (!_ready || c == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        AspectRatio(
+          aspectRatio: c.value.aspectRatio == 0 ? 16 / 9 : c.value.aspectRatio,
+          child: VideoPlayer(c),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.5),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () {
+                if (c.value.isPlaying) {
+                  c.pause();
+                } else {
+                  c.play();
+                }
+                setState(() {});
+              },
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Icon(
+                  c.value.isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryNotFoundState extends StatelessWidget {
+  const _CategoryNotFoundState({
+    required this.category,
+    required this.onBack,
+    required this.l10n,
+  });
+
+  final String category;
+  final VoidCallback onBack;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.folder_off_rounded,
+                size: 36,
+                color: Color(0xFF8A8A8A),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              l10n.categoryNotFoundTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: Color(0xFF1F1F1F),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.categoryNotFoundSubtitle(category),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: const Color(0xFF1F1F1F).withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 22),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1F1F1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+              ),
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: Text(l10n.goBack),
+            ),
+          ],
         ),
       ),
     );

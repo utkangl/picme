@@ -1,8 +1,8 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:picme/l10n/app_localizations.dart';
+import 'package:picme/src/core/data/review_prompter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -146,6 +146,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsCard(
               children: [
                 _SettingsTile(
+                  icon: Icons.star_rounded,
+                  iconBg: const Color(0xFFFFF3E0),
+                  iconFg: const Color(0xFFF59E0B),
+                  title: l10n.rateAppTitle,
+                  subtitle: l10n.rateAppSubtitle,
+                  trailing: Icons.chevron_right_rounded,
+                  onTap: ReviewPrompter.requestReviewOrOpenStore,
+                ),
+                _SettingsTile(
+                  icon: Icons.mail_outline_rounded,
+                  iconBg: const Color(0xFFE3F2FD),
+                  iconFg: const Color(0xFF2196F3),
+                  title: l10n.feedbackTitle,
+                  subtitle: l10n.feedbackSubtitle,
+                  trailing: Icons.open_in_new_rounded,
+                  onTap: () => launchUrl(
+                    Uri.parse(
+                      'mailto:utkanvocal@gmail.com?subject=Picme%20feedback',
+                    ),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                _SettingsTile(
                   icon: Icons.privacy_tip_rounded,
                   iconBg: const Color(0xFFE5E5EA),
                   iconFg: const Color(0xFF1F1F1F),
@@ -162,22 +185,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
 
-            if (kDebugMode) ...[
-              const SizedBox(height: 20),
-              _SectionLabel(text: 'Debug'),
-              _SettingsCard(
-                children: [
-                  _SettingsTile(
-                    icon: Icons.bug_report_rounded,
-                    iconBg: const Color(0xFFFFE0E0),
-                    iconFg: const Color(0xFFC93737),
-                    title: 'Test Crash',
-                    subtitle: 'Forces a crash to verify Crashlytics',
-                    onTap: () => FirebaseCrashlytics.instance.crash(),
-                  ),
-                ],
-              ),
-            ],
+            // Crashlytics smoke-test entry. Visible in every build for now
+            // so we can verify on a real release-channel install. Once
+            // Crashlytics is confirmed end-to-end this whole block can be
+            // removed (or moved back behind `kDebugMode`).
+            const SizedBox(height: 20),
+            _SectionLabel(text: 'Debug'),
+            _SettingsCard(
+              children: [
+                _SettingsTile(
+                  icon: Icons.bug_report_rounded,
+                  iconBg: const Color(0xFFFFE0E0),
+                  iconFg: const Color(0xFFC93737),
+                  title: l10n.settingsTestCrashTitle,
+                  subtitle: l10n.settingsTestCrashSubtitle,
+                  onTap: () => FirebaseCrashlytics.instance.crash(),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 32),
             Center(
