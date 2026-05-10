@@ -1,0 +1,389 @@
+{
+  "@@locale": "tr",
+
+  "appTitle": "Picme",
+  "@appTitle": {"description": "App name"},
+
+  "navClean": "Temizle",
+  "@navClean": {"description": "Bottom nav - clean tab"},
+
+  "navReview": "İncele",
+  "@navReview": {"description": "Bottom nav - review/queue tab"},
+
+  "categories": "Kategoriler",
+  "@categories": {"description": "Home screen section header"},
+
+  "recent": "Son Eklenenler",
+  "@recent": {"description": "Home screen section header"},
+
+  "homeHeroTitle": "Galerini hafiflet",
+  "@homeHeroTitle": {"description": "Hero card title on home"},
+
+  "homeHeroSubtitle": "Sola kaydır ve sırala, sağa kaydır ve sakla.",
+  "@homeHeroSubtitle": {"description": "Hero card subtitle on home"},
+
+  "statsTotal": "Toplam",
+  "@statsTotal": {"description": "Stats label - total media count"},
+
+  "statsQueued": "Kuyrukta",
+  "@statsQueued": {"description": "Stats label - queued for deletion count"},
+
+  "statsKept": "Saklanan",
+  "@statsKept": {"description": "Stats label - kept count"},
+
+  "settingsSectionPermissions": "İzinler",
+  "@settingsSectionPermissions": {"description": "Settings section header"},
+
+  "settingsSectionData": "Verilerim",
+  "@settingsSectionData": {"description": "Settings section header"},
+
+  "settingsSectionGuide": "Yardım",
+  "@settingsSectionGuide": {"description": "Settings section header"},
+
+  "settingsSectionAbout": "Hakkında",
+  "@settingsSectionAbout": {"description": "Settings section header"},
+
+  "sortNewest": "En Yeni",
+  "@sortNewest": {"description": "Sort chip label"},
+
+  "sortOldest": "En Eski",
+  "@sortOldest": {"description": "Sort chip label"},
+
+  "sortLargest": "En Büyük",
+  "@sortLargest": {"description": "Sort chip label - largest file size first"},
+
+  "catAllMedia": "Tüm Medya",
+  "@catAllMedia": {"description": "Gallery category"},
+
+  "catPhotos": "Fotoğraflar",
+  "@catPhotos": {"description": "Gallery category"},
+
+  "catVideos": "Videolar",
+  "@catVideos": {"description": "Gallery category"},
+
+  "catScreenshots": "Ekran Görüntüleri",
+  "@catScreenshots": {"description": "Gallery category"},
+
+  "catDownloads": "İndirilenler",
+  "@catDownloads": {"description": "Gallery category"},
+
+  "permissionTitle": "Galeri erişimi gerekli",
+  "@permissionTitle": {"description": "Permission denied screen title"},
+
+  "permissionBody": "Picme galerini görebilmen için fotoğraflara erişim izni vermen gerekiyor.",
+  "@permissionBody": {"description": "Permission denied screen body"},
+
+  "retryButton": "Tekrar dene",
+  "@retryButton": {"description": "Retry button label"},
+
+  "openSettingsButton": "Ayarları aç",
+  "@openSettingsButton": {"description": "Open system settings button"},
+
+  "itemsDeleted": "{count} öğe silindi",
+  "@itemsDeleted": {
+    "description": "Snackbar after deletion",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "deleteError": "Silinemedi: {error}",
+  "@deleteError": {
+    "description": "Snackbar on delete error",
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+
+  "settingsTitle": "Ayarlar",
+  "@settingsTitle": {"description": "Settings screen title"},
+
+  "galleryPermTitle": "Galeri izin ayarlarını aç",
+  "@galleryPermTitle": {"description": "Settings tile title"},
+
+  "galleryPermSubtitle": "Sistem izin ekranını açar",
+  "@galleryPermSubtitle": {"description": "Settings tile subtitle"},
+
+  "clearQueueTitle": "Silme kuyruğunu temizle",
+  "@clearQueueTitle": {"description": "Settings tile title"},
+
+  "clearQueueSubtitle": "{count} öğe sırada",
+  "@clearQueueSubtitle": {
+    "description": "Settings tile subtitle",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "clearQueueDialogTitle": "Kuyruk temizlensin mi?",
+  "@clearQueueDialogTitle": {"description": "Confirmation dialog title"},
+
+  "clearQueueDialogBody": "Kuyruktaki öğeler silinmez, sadece listeden çıkar.",
+  "@clearQueueDialogBody": {"description": "Confirmation dialog body"},
+
+  "clearQueueConfirm": "Temizle",
+  "@clearQueueConfirm": {"description": "Confirm button label"},
+
+  "clearQueueSuccess": "Kuyruk temizlendi",
+  "@clearQueueSuccess": {"description": "Success snackbar"},
+
+  "resetKeptTitle": "Tutulanları sıfırla",
+  "@resetKeptTitle": {"description": "Settings tile title"},
+
+  "resetKeptSubtitleEmpty": "Henüz tutulan öğe yok",
+  "@resetKeptSubtitleEmpty": {"description": "Settings tile subtitle when empty"},
+
+  "resetKeptSubtitle": "{count} öğe tekrar deste başına gelir",
+  "@resetKeptSubtitle": {
+    "description": "Settings tile subtitle",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "resetKeptDialogTitle": "Tutulanlar sıfırlansın mı?",
+  "@resetKeptDialogTitle": {"description": "Confirmation dialog title"},
+
+  "resetKeptDialogBody": "Sağa atarak \"tut\" dediğin öğeler tekrar deste başına gelir.",
+  "@resetKeptDialogBody": {"description": "Confirmation dialog body"},
+
+  "resetKeptConfirm": "Sıfırla",
+  "@resetKeptConfirm": {"description": "Confirm button label"},
+
+  "resetKeptSuccess": "Tutulanlar sıfırlandı",
+  "@resetKeptSuccess": {"description": "Success snackbar"},
+
+  "restartTourTitle": "Rehberi tekrar göster",
+  "@restartTourTitle": {"description": "Settings tile title"},
+
+  "restartTourSubtitle": "Uygulama içi tanıtım turunu yeniden başlat",
+  "@restartTourSubtitle": {"description": "Settings tile subtitle"},
+
+  "settingsAbout": "Hızlı galeri temizliği. Kuyruktaki ve tutulan öğeler uygulama kapansa da korunur.",
+  "@settingsAbout": {"description": "Settings screen about text"},
+
+  "cancel": "Vazgeç",
+  "@cancel": {"description": "Cancel button label"},
+
+  "reviewQueueTitle": "İnceleme Kuyruğu ({count})",
+  "@reviewQueueTitle": {
+    "description": "Queue screen title",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "queueEmpty": "Kuyruk boş.",
+  "@queueEmpty": {"description": "Empty queue message"},
+
+  "deleteItemsButton": "{count} öğeyi sil",
+  "@deleteItemsButton": {
+    "description": "Delete button label",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "confirmDeleteTitle": "Silmeyi Onayla",
+  "@confirmDeleteTitle": {"description": "Confirmation dialog title"},
+
+  "confirmDeleteBody": "{count} öğe kalıcı olarak silinecek.",
+  "@confirmDeleteBody": {
+    "description": "Confirmation dialog body",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "delete": "Sil",
+  "@delete": {"description": "Delete button label"},
+
+  "historyTitle": "Silme Geçmişi",
+  "@historyTitle": {"description": "History screen title"},
+
+  "historyEmpty": "Henüz silme geçmişi yok",
+  "@historyEmpty": {"description": "Empty history message"},
+
+  "historyItemDeleted": "{count} öğe kalıcı silindi",
+  "@historyItemDeleted": {
+    "description": "History entry description",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "swipeHint": "Sol: Sil  •  Sağ: Tut",
+  "@swipeHint": {"description": "Swipe hint label on card deck"},
+
+  "keep": "TUT",
+  "@keep": {"description": "Keep swipe hint chip"},
+
+  "deleteLabel": "SİL",
+  "@deleteLabel": {"description": "Delete swipe hint chip"},
+
+  "undoButton": "Geri al",
+  "@undoButton": {"description": "Undo button tooltip"},
+
+  "undoLastMove": "Son hamleyi geri al",
+  "@undoLastMove": {"description": "Undo button on empty state"},
+
+  "allScanned": "Tüm medyalar tarandı.",
+  "@allScanned": {"description": "Empty swipe deck message"},
+
+  "coachSkip": "Atla",
+  "@coachSkip": {"description": "Coach overlay skip button"},
+
+  "coachNext": "Sonraki",
+  "@coachNext": {"description": "Coach tooltip next button"},
+
+  "coachDone": "Tamam",
+  "@coachDone": {"description": "Coach tooltip last step button"},
+
+  "coachHomeSettingsTitle": "Ayarlar",
+  "@coachHomeSettingsTitle": {"description": "Coach step title"},
+
+  "coachHomeSettingsDesc": "Buradan galeri izinlerini, kuyruğu ve tutulanları yönetebilirsin.",
+  "@coachHomeSettingsDesc": {"description": "Coach step description"},
+
+  "coachHomeCategoryTitle": "Bir kategori seç",
+  "@coachHomeCategoryTitle": {"description": "Coach step title"},
+
+  "coachHomeCategoryDesc": "Tüm Medya, Fotoğraflar, Videolar gibi kategorilerden birine dokunarak temizliğe başla.",
+  "@coachHomeCategoryDesc": {"description": "Coach step description"},
+
+  "coachHomeHistoryTitle": "Silme geçmişi",
+  "@coachHomeHistoryTitle": {"description": "Coach step title"},
+
+  "coachHomeHistoryDesc": "Kalıcı olarak sildiğin paketlerin kaydını buradan görebilirsin.",
+  "@coachHomeHistoryDesc": {"description": "Coach step description"},
+
+  "coachHomeQueueTitle": "Silme kuyruğu",
+  "@coachHomeQueueTitle": {"description": "Coach step title"},
+
+  "coachHomeQueueDesc": "Sola kaydırdığın öğeler kuyrukta birikir; toplu kalıcı silmeyi buradan yaparsın.",
+  "@coachHomeQueueDesc": {"description": "Coach step description"},
+
+  "coachSwipeDecideTitle": "Sola sil, sağa sakla",
+  "@coachSwipeDecideTitle": {"description": "Swipe intro headline"},
+
+  "coachSwipeDecideDesc": "Galerini bir desteye çevirdik. Beğendiğin fotoğrafı sağa, gözden çıkardığını sola kaydır. Tek dokun büyük önizleme açar.",
+  "@coachSwipeDecideDesc": {"description": "Swipe intro body"},
+
+  "swipeIntroCta": "Anladım, başlayalım",
+  "@swipeIntroCta": {"description": "Swipe intro primary action"},
+
+  "coachSwipeUndoTitle": "Geri al",
+  "@coachSwipeUndoTitle": {"description": "Coach step title"},
+
+  "coachSwipeUndoDesc": "Son hamleni buradan geri al. Sağa atılan sağdan, sola atılan soldan geri gelir.",
+  "@coachSwipeUndoDesc": {"description": "Coach step description"},
+
+  "coachSwipeQueueTitle": "Silme kuyruğu",
+  "@coachSwipeQueueTitle": {"description": "Coach step title"},
+
+  "coachSwipeQueueDesc": "Sola attıkların burada birikir. Hepsini gözden geçirip toplu kalıcı silme yapabilirsin.",
+  "@coachSwipeQueueDesc": {"description": "Coach step description"},
+
+  "welcomeTitle": "Picme'ye Hoş Geldin",
+  "@welcomeTitle": {"description": "Welcome screen title"},
+
+  "welcomeSubtitle": "Galerinizi hızlıca temizleyin",
+  "@welcomeSubtitle": {"description": "Welcome screen subtitle"},
+
+  "welcomeFeature1Title": "Tamamen Yerel",
+  "@welcomeFeature1Title": {"description": "Welcome feature 1 title"},
+
+  "welcomeFeature1Body": "Galerin yalnızca cihazında taranır. Hiçbir veri sunucuya gönderilmez.",
+  "@welcomeFeature1Body": {"description": "Welcome feature 1 body"},
+
+  "welcomeFeature2Title": "Sen Onaylamadan Silinmez",
+  "@welcomeFeature2Title": {"description": "Welcome feature 2 title"},
+
+  "welcomeFeature2Body": "Öğeler önce kuyruğa alınır; kalıcı silme ancak senin onayınla gerçekleşir.",
+  "@welcomeFeature2Body": {"description": "Welcome feature 2 body"},
+
+  "welcomeFeature3Title": "Gizlilik Önce Gelir",
+  "@welcomeFeature3Title": {"description": "Welcome feature 3 title"},
+
+  "welcomeFeature3Body": "Fotoğraf analizi, reklam hedefleme veya üçüncü taraf paylaşımı yoktur.",
+  "@welcomeFeature3Body": {"description": "Welcome feature 3 body"},
+
+  "welcomeContinueButton": "Galerime İzin Ver",
+  "@welcomeContinueButton": {"description": "Welcome continue button"},
+
+  "welcomePrivacyNote": "Devam ederek Gizlilik Politikası'nı kabul etmiş olursun.",
+  "@welcomePrivacyNote": {"description": "Welcome privacy note"},
+
+  "permissionWhyTitle": "Neden galeri erişimi?",
+  "@permissionWhyTitle": {"description": "Permission rationale dialog title"},
+
+  "permissionWhyBody": "Picme, fotoğraf ve videolarınızı listeleyip kaydırayarak gözden geçirmenizi sağlamak için galeri okuma iznine ihtiyaç duyar. Hiçbir dosya izinsiz silinmez ve verileriniz cihazınızda kalır.",
+  "@permissionWhyBody": {"description": "Permission rationale dialog body"},
+
+  "permissionWhyClose": "Anladım",
+  "@permissionWhyClose": {"description": "Permission rationale dialog close button"},
+
+  "limitedAccessBanner": "Yalnızca seçili medyalara erişim var.",
+  "@limitedAccessBanner": {"description": "Limited access banner text"},
+
+  "limitedAccessAction": "Daha fazla seç",
+  "@limitedAccessAction": {"description": "Limited access banner action button"},
+
+  "queueSummary": "{count} öğe • ~{mb} MB",
+  "@queueSummary": {
+    "description": "Queue header summary with size",
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "deleteItemsButtonWithSize": "{count} öğeyi sil (~{mb} MB)",
+  "@deleteItemsButtonWithSize": {
+    "description": "Delete button label with size",
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "confirmDeleteBodyWithSize": "{count} öğe (~{mb} MB) kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+  "@confirmDeleteBodyWithSize": {
+    "description": "Confirmation dialog body with size",
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "privacyPolicyTitle": "Gizlilik Politikası",
+  "@privacyPolicyTitle": {"description": "Privacy policy settings tile title"},
+
+  "privacyPolicySubtitle": "Verilerinizin nasıl kullanıldığını öğrenin",
+  "@privacyPolicySubtitle": {"description": "Privacy policy settings tile subtitle"},
+
+  "viewKeptTitle": "Tutulanları görüntüle",
+  "@viewKeptTitle": {"description": "Settings tile to open kept items list"},
+
+  "viewKeptSubtitle": "{count} öğe tutuluyor",
+  "@viewKeptSubtitle": {
+    "description": "Settings tile subtitle showing kept count",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "keptListTitle": "Tutulanlar ({count})",
+  "@keptListTitle": {
+    "description": "Kept list screen title",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "keptListEmpty": "Henüz tutulan öğe yok.",
+  "@keptListEmpty": {"description": "Empty state for kept list screen"},
+
+  "unkeepTooltip": "Tutulanlardan çıkar",
+  "@unkeepTooltip": {"description": "Tooltip on remove button in kept list"}
+}

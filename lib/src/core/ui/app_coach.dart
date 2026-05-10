@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:picme/l10n/app_localizations.dart';
 
 enum CoachShape { roundedRect, circle }
 
@@ -198,7 +199,7 @@ class _CoachOverlayState extends State<_CoachOverlay>
             child: TextButton(
               onPressed: _skip,
               style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('Atla'),
+              child: Text(AppLocalizations.of(context)!.coachSkip),
             ),
           ),
         ],
@@ -259,6 +260,7 @@ class _CoachTooltip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLast = stepIndex >= stepCount - 1;
+    final l10n = AppLocalizations.of(context)!;
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -325,7 +327,7 @@ class _CoachTooltip extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                child: Text(isLast ? 'Tamam' : 'Sonraki'),
+                child: Text(isLast ? l10n.coachDone : l10n.coachNext),
               ),
             ),
           ],

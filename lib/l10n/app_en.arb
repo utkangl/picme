@@ -1,0 +1,185 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Picme",
+  "navClean": "Clean",
+  "navReview": "Review",
+  "categories": "Categories",
+  "recent": "Recent",
+  "homeHeroTitle": "Lighten your gallery",
+  "homeHeroSubtitle": "Swipe left to queue, right to keep.",
+  "statsTotal": "Total",
+  "statsQueued": "Queued",
+  "statsKept": "Kept",
+  "settingsSectionPermissions": "Permissions",
+  "settingsSectionData": "My data",
+  "settingsSectionGuide": "Help",
+  "settingsSectionAbout": "About",
+  "sortNewest": "Newest",
+  "sortOldest": "Oldest",
+  "sortLargest": "Largest",
+  "catAllMedia": "All Media",
+  "catPhotos": "Photos",
+  "catVideos": "Videos",
+  "catScreenshots": "Screenshots",
+  "catDownloads": "Downloads",
+  "permissionTitle": "Gallery access required",
+  "permissionBody": "Picme needs access to your photos to scan your gallery.",
+  "retryButton": "Retry",
+  "openSettingsButton": "Open Settings",
+  "itemsDeleted": "{count} items deleted",
+  "@itemsDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deleteError": "Could not delete: {error}",
+  "@deleteError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "settingsTitle": "Settings",
+  "galleryPermTitle": "Open gallery permission settings",
+  "galleryPermSubtitle": "Opens the system permission screen",
+  "clearQueueTitle": "Clear delete queue",
+  "clearQueueSubtitle": "{count} items in queue",
+  "@clearQueueSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "clearQueueDialogTitle": "Clear queue?",
+  "clearQueueDialogBody": "Items in queue will not be deleted, only removed from the list.",
+  "clearQueueConfirm": "Clear",
+  "clearQueueSuccess": "Queue cleared",
+  "resetKeptTitle": "Reset kept items",
+  "resetKeptSubtitleEmpty": "No items kept yet",
+  "resetKeptSubtitle": "{count} items will return to the deck",
+  "@resetKeptSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "resetKeptDialogTitle": "Reset kept items?",
+  "resetKeptDialogBody": "Items you swiped right (\"keep\") will return to the top of the deck.",
+  "resetKeptConfirm": "Reset",
+  "resetKeptSuccess": "Kept items reset",
+  "restartTourTitle": "Show guide again",
+  "restartTourSubtitle": "Restart the in-app tutorial",
+  "settingsAbout": "Fast gallery cleanup. Queued and kept items are preserved when the app is closed.",
+  "cancel": "Cancel",
+  "reviewQueueTitle": "Review Queue ({count})",
+  "@reviewQueueTitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "queueEmpty": "Queue is empty.",
+  "deleteItemsButton": "Delete {count} Items",
+  "@deleteItemsButton": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmDeleteTitle": "Confirm Delete",
+  "confirmDeleteBody": "{count} item(s) will be deleted permanently.",
+  "@confirmDeleteBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "delete": "Delete",
+  "historyTitle": "Delete History",
+  "historyEmpty": "No delete history yet",
+  "historyItemDeleted": "{count} items permanently deleted",
+  "@historyItemDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "swipeHint": "Left: Delete  •  Right: Keep",
+  "keep": "KEEP",
+  "deleteLabel": "DELETE",
+  "undoButton": "Undo",
+  "undoLastMove": "Undo last move",
+  "allScanned": "All media scanned.",
+  "coachSkip": "Skip",
+  "coachNext": "Next",
+  "coachDone": "Done",
+  "coachHomeSettingsTitle": "Settings",
+  "coachHomeSettingsDesc": "Manage gallery permissions, queue, and kept items here.",
+  "coachHomeCategoryTitle": "Choose a category",
+  "coachHomeCategoryDesc": "Tap a category like All Media, Photos, or Videos to start cleaning.",
+  "coachHomeHistoryTitle": "Delete history",
+  "coachHomeHistoryDesc": "See a log of all the batches you have permanently deleted.",
+  "coachHomeQueueTitle": "Delete queue",
+  "coachHomeQueueDesc": "Items you swipe left pile up here; do a bulk permanent delete from here.",
+  "coachSwipeDecideTitle": "Left to delete, right to keep",
+  "coachSwipeDecideDesc": "We turned your gallery into a deck. Swipe right on the ones you love and left on the ones you don't. Tap to open a full preview.",
+  "swipeIntroCta": "Got it, let's start",
+  "coachSwipeUndoTitle": "Undo",
+  "coachSwipeUndoDesc": "Undo your last move here. Kept items come back from the right, deleted from the left.",
+  "coachSwipeQueueTitle": "Delete queue",
+  "coachSwipeQueueDesc": "Items you swipe left pile up here. Review them and do a bulk permanent delete.",
+
+  "welcomeTitle": "Welcome to Picme",
+  "welcomeSubtitle": "Clean your gallery, fast",
+  "welcomeFeature1Title": "Fully Local",
+  "welcomeFeature1Body": "Your gallery is scanned on-device only. No data is ever sent to a server.",
+  "welcomeFeature2Title": "You Decide What's Deleted",
+  "welcomeFeature2Body": "Items go to a queue first; permanent deletion only happens with your explicit confirmation.",
+  "welcomeFeature3Title": "Privacy First",
+  "welcomeFeature3Body": "No photo analysis, ad targeting, or third-party sharing.",
+  "welcomeContinueButton": "Allow Gallery Access",
+  "welcomePrivacyNote": "By continuing you accept the Privacy Policy.",
+  "permissionWhyTitle": "Why gallery access?",
+  "permissionWhyBody": "Picme needs read access to your gallery to list and display your photos and videos for review. No files are deleted without your confirmation, and your data stays on your device.",
+  "permissionWhyClose": "Got it",
+
+  "limitedAccessBanner": "Access limited to selected photos.",
+  "limitedAccessAction": "Select more",
+
+  "queueSummary": "{count} items • ~{mb} MB",
+  "@queueSummary": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "deleteItemsButtonWithSize": "Delete {count} Items (~{mb} MB)",
+  "@deleteItemsButtonWithSize": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "confirmDeleteBodyWithSize": "{count} items (~{mb} MB) will be permanently deleted. This cannot be undone.",
+  "@confirmDeleteBodyWithSize": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "mb": {"type": "String"}
+    }
+  },
+
+  "privacyPolicyTitle": "Privacy Policy",
+  "privacyPolicySubtitle": "Learn how your data is used",
+
+  "viewKeptTitle": "View kept items",
+  "viewKeptSubtitle": "{count} items kept",
+  "@viewKeptSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "keptListTitle": "Kept Items ({count})",
+  "@keptListTitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "keptListEmpty": "No kept items yet.",
+  "unkeepTooltip": "Remove from kept"
+}

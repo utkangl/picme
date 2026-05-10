@@ -1,0 +1,15 @@
+flutter_native_splash:
+  # Background color matching the app's brand gradient base
+  color: "#F7F2F2"
+
+  # Image displayed in the center of the splash screen
+  image: assets/icon/app_icon.png
+
+  android: true
+  ios: false
+
+  # Android 12+ themed splash
+  android_12:
+    color: "#F7F2F2"
+    image: assets/icon/app_icon.png
+    icon_background_color: "#F7F2F2"

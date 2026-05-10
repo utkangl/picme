@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "523366102153",
+    "project_id": "picme-2487d",
+    "storage_bucket": "picme-2487d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523366102153:android:973b296bd723cb01c28258",
+        "android_client_info": {
+          "package_name": "com.picme.app.picme"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFV-h70yhe8QYyYl2Epoo51jGq0rK_2DM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

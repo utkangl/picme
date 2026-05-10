@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import 'package:picme/l10n/app_localizations.dart';
 import 'package:picme/src/core/models/delete_history_entry.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
 import 'package:picme/src/core/ui/app_coach.dart';
 import 'package:picme/src/features/home/presentation/history_screen.dart';
 import 'package:picme/src/features/home/presentation/settings_screen.dart';
+import 'package:picme/src/features/kept/presentation/kept_list_screen.dart';
 import 'package:picme/src/features/queue/presentation/delete_queue_screen.dart';
 import 'package:picme/src/features/swipe/data/gallery_repository.dart';
 import 'package:picme/src/features/swipe/domain/swipe_filters.dart';
@@ -14,7 +18,9 @@ import 'package:picme/src/features/swipe/presentation/swipe_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.initialPermissionState});
+
+  final PermissionState? initialPermissionState;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -48,6 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final c in GalleryCategory.values) c: 0,
   };
   bool _isLoading = true;
+  int _currentMediaPage = 0;
+  bool _hasMoreMedia = false;
+  bool _isLoadingNextPage = false;
   PermissionState? _permissionState;
   String? _errorMessage;
 
@@ -56,6 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPermissionState != null) {
+      _permissionState = widget.initialPermissionState;
+    }
     _bootstrap();
   }
 
@@ -68,6 +80,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _bootstrap() async {
     await _loadHistory();
     await _loadKeptIds();
+
+    // Always fetch a fresh permission snapshot. `_permissionState` may already
+    // hold the value RootGate / WelcomeScreen seeded, but the user can flip
+    // permission via system settings between bootstraps (this is exactly the
+    // path triggered when they tap "Retry" on the permission-denied screen).
     final state = await _repo.requestPermission();
     if (!mounted) return;
     setState(() => _permissionState = state);
@@ -87,38 +104,35 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || _view != _AppView.home) return;
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     await AppCoach.show(
       context,
       steps: [
         CoachStep(
           targetKey: _settingsKey,
-          title: 'Ayarlar',
-          description:
-              'Buradan galeri izinlerini, kuyruğu ve tutulanları yönetebilirsin.',
+          title: l10n.coachHomeSettingsTitle,
+          description: l10n.coachHomeSettingsDesc,
           shape: CoachShape.circle,
           padding: const EdgeInsets.all(4),
         ),
         CoachStep(
           targetKey: _firstCategoryKey,
-          title: 'Bir kategori seç',
-          description:
-              'Tüm Medya, Fotoğraflar, Videolar gibi kategorilerden birine dokunarak temizliğe başla.',
+          title: l10n.coachHomeCategoryTitle,
+          description: l10n.coachHomeCategoryDesc,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           radius: 16,
         ),
         CoachStep(
           targetKey: _historyKey,
-          title: 'Silme geçmişi',
-          description:
-              'Kalıcı olarak sildiğin paketlerin kaydını buradan görebilirsin.',
+          title: l10n.coachHomeHistoryTitle,
+          description: l10n.coachHomeHistoryDesc,
           shape: CoachShape.circle,
           padding: const EdgeInsets.all(4),
         ),
         CoachStep(
           targetKey: _reviewNavKey,
-          title: 'Silme kuyruğu',
-          description:
-              'Sola kaydırdığın öğeler kuyrukta birikir; toplu kalıcı silmeyi buradan yaparsın.',
+          title: l10n.coachHomeQueueTitle,
+          description: l10n.coachHomeQueueDesc,
           padding: const EdgeInsets.all(8),
           radius: 14,
         ),
@@ -207,67 +221,131 @@ class _HomeScreenState extends State<HomeScreen> {
       final recent = await _repo.getMedia(
         category: GalleryCategory.allMedia,
         sortOption: SortOption.newestFirst,
+        page: 0,
+        pageSize: 15,
       );
+      // Use getCount() for category totals — much faster than loading all items.
+      final countFutures = GalleryCategory.values
+          .map((cat) => _repo.getCount(cat));
+      final countResults = await Future.wait(countFutures);
       final counts = <GalleryCategory, int>{};
-      for (final category in GalleryCategory.values) {
-        final items = await _repo.getMedia(
-          category: category,
-          sortOption: SortOption.newestFirst,
-        );
-        counts[category] = _filterQueued(items).length;
+      for (var i = 0; i < GalleryCategory.values.length; i++) {
+        counts[GalleryCategory.values[i]] = countResults[i];
       }
       if (!mounted) return;
       setState(() {
-        _recent = _filterQueued(recent).take(15).toList();
+        _recent = _filterKept(_filterQueued(recent)).take(15).toList();
         _counts = counts;
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _errorMessage = 'Galeri yüklenemedi: $error';
+        _errorMessage = l10n.deleteError(error.toString());
         _isLoading = false;
       });
     }
   }
+
+  /// How many items at the head of the deck we eagerly resolve sizes for so
+  /// the "X MB" label on the swipe card is filled in by the time it shows up.
+  /// Resolution beyond this count happens naturally via `_addToQueue` once
+  /// the user swipes left.
+  static const int _sizeWarmCount = 30;
 
   Future<void> _loadMedia() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _currentMediaPage = 0;
+      _hasMoreMedia = false;
     });
     try {
       final items = await _repo.getMedia(
         category: _selectedCategory,
         sortOption: _selectedSort,
+        page: 0,
+        pageSize: GalleryRepository.defaultPageSize,
       );
+      final totalCount = await _repo.getCount(_selectedCategory);
       if (!mounted) return;
       setState(() {
         _media = _orderForSwipe(_filterQueued(items));
         _actionHistory.clear();
+        _hasMoreMedia = totalCount > GalleryRepository.defaultPageSize;
         _isLoading = false;
       });
+      unawaited(_warmDeckSizes());
     } catch (error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _errorMessage = 'Galeri yüklenemedi: $error';
+        _errorMessage = l10n.deleteError(error.toString());
         _isLoading = false;
       });
     }
   }
 
+  Future<void> _loadNextMediaPage() async {
+    if (_isLoadingNextPage || !_hasMoreMedia) return;
+    setState(() => _isLoadingNextPage = true);
+    try {
+      final nextPage = _currentMediaPage + 1;
+      final items = await _repo.getMedia(
+        category: _selectedCategory,
+        sortOption: _selectedSort,
+        page: nextPage,
+        pageSize: GalleryRepository.defaultPageSize,
+      );
+      if (!mounted) return;
+      final newItems = _filterQueued(items);
+      setState(() {
+        _media = [..._media, ..._orderForSwipe(newItems)];
+        _currentMediaPage = nextPage;
+        _hasMoreMedia = items.length == GalleryRepository.defaultPageSize;
+        _isLoadingNextPage = false;
+      });
+      unawaited(_warmDeckSizes());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingNextPage = false);
+    }
+  }
+
+  /// Fills in `fileSizeInBytes` for the next chunk of items at the head of
+  /// the deck so cards display their MB right away. Runs in the background
+  /// after a load finishes; failures are swallowed (size is decorative).
+  Future<void> _warmDeckSizes() async {
+    if (_media.isEmpty) return;
+    final candidates = <MediaItem>[];
+    for (final item in _media) {
+      if (item.fileSizeInBytes == null) candidates.add(item);
+      if (candidates.length >= _sizeWarmCount) break;
+    }
+    if (candidates.isEmpty) return;
+    try {
+      final resolved = await _repo.warmSizes(candidates);
+      if (!mounted) return;
+      final byId = {for (final m in resolved) m.id: m};
+      setState(() {
+        _media = [
+          for (final item in _media) byId[item.id] ?? item,
+        ];
+      });
+    } catch (_) {
+      // ignore; size is non-critical UI affordance.
+    }
+  }
+
   List<MediaItem> _orderForSwipe(List<MediaItem> items) {
     if (_keptIds.isEmpty) return items;
-    final undecided = <MediaItem>[];
-    final kept = <MediaItem>[];
-    for (final item in items) {
-      if (_keptIds.contains(item.id)) {
-        kept.add(item);
-      } else {
-        undecided.add(item);
-      }
-    }
-    return [...undecided, ...kept];
+    return items.where((item) => !_keptIds.contains(item.id)).toList();
+  }
+
+  List<MediaItem> _filterKept(List<MediaItem> items) {
+    if (_keptIds.isEmpty) return items;
+    return items.where((item) => !_keptIds.contains(item.id)).toList();
   }
 
   void _openSwipeForCategory(GalleryCategory category) {
@@ -289,6 +367,26 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     });
     _persistQueue();
+    // Lazily resolve file size so the queue summary can show total MB.
+    if (item.fileSizeInBytes == null) {
+      _resolveSizeForQueueItem(item);
+    }
+  }
+
+  Future<void> _resolveSizeForQueueItem(MediaItem item) async {
+    try {
+      final file = await item.asset.file;
+      if (file == null) return;
+      final size = await file.length();
+      if (!mounted) return;
+      final idx = _deleteQueue.indexWhere((q) => q.id == item.id);
+      if (idx == -1) return;
+      setState(() {
+        _deleteQueue[idx] = item.copyWith(fileSizeInBytes: size);
+      });
+    } catch (_) {
+      // Ignore; size will remain null
+    }
   }
 
   void _keepItem(MediaItem item) {
@@ -345,6 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _confirmDeleteQueue() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final toDelete = List<MediaItem>.from(_deleteQueue);
 
     try {
@@ -369,18 +468,21 @@ class _HomeScreenState extends State<HomeScreen> {
       _persistHistory();
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        SnackBar(content: Text('${deletedIds.length} öğe silindi')),
+        SnackBar(content: Text(l10n.itemsDeleted(deletedIds.length))),
       );
     } catch (error) {
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(SnackBar(content: Text('Silinemedi: $error')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.deleteError(error.toString()))),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final body = _buildActiveView();
+    final l10n = AppLocalizations.of(context)!;
+    final body = _buildActiveView(l10n);
 
     return PopScope(
       canPop: _view == _AppView.home,
@@ -404,28 +506,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActiveView() {
+  Widget _buildActiveView(AppLocalizations l10n) {
     final permission = _permissionState;
     if (permission != null && !permission.isAuth && !permission.hasAccess) {
       return _PermissionDenied(onRetry: _bootstrap);
     }
 
+    final isLimited =
+        permission != null && !permission.isAuth && permission.hasAccess;
+
     if (_view == _AppView.home) {
-      return _HomeView(
-        recent: _recent,
-        counts: _counts,
-        selectedSort: _selectedSort,
-        isLoading: _isLoading,
-        errorMessage: _errorMessage,
-        settingsKey: _settingsKey,
-        historyKey: _historyKey,
-        firstCategoryKey: _firstCategoryKey,
-        onSortChanged: (sort) {
-          setState(() => _selectedSort = sort);
-        },
-        onOpenSettings: _openSettings,
-        onOpenHistory: _openHistory,
-        onOpenCategory: _openSwipeForCategory,
+      return Column(
+        children: [
+          if (isLimited)
+            _LimitedAccessBanner(
+              onSelectMore: _onSelectMorePhotos,
+            ),
+          Expanded(
+            child: _HomeView(
+              recent: _recent,
+              counts: _counts,
+              selectedSort: _selectedSort,
+              isLoading: _isLoading,
+              errorMessage: _errorMessage,
+              queueCount: _deleteQueue.length,
+              keptCount: _keptIds.length,
+              settingsKey: _settingsKey,
+              historyKey: _historyKey,
+              firstCategoryKey: _firstCategoryKey,
+              onSortChanged: (sort) {
+                setState(() => _selectedSort = sort);
+              },
+              onOpenSettings: _openSettings,
+              onOpenHistory: _openHistory,
+              onOpenCategory: _openSwipeForCategory,
+            ),
+          ),
+        ],
       );
     }
 
@@ -444,6 +561,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenQueue: () => setState(() => _view = _AppView.queue),
         queueCount: _deleteQueue.length,
         tourPrefsKey: _swipeTourPrefsKey,
+        onLoadMore: _hasMoreMedia ? _loadNextMediaPage : null,
       );
     }
 
@@ -453,6 +571,15 @@ class _HomeScreenState extends State<HomeScreen> {
       onConfirmDelete: _confirmDeleteQueue,
       onClose: () => setState(() => _view = _AppView.home),
     );
+  }
+
+  Future<void> _onSelectMorePhotos() async {
+    await _repo.presentLimited();
+    if (!mounted) return;
+    final newState = await _repo.requestPermission();
+    if (!mounted) return;
+    setState(() => _permissionState = newState);
+    await _loadHomeData();
   }
 
   List<MediaItem> _filterQueued(List<MediaItem> items) {
@@ -469,12 +596,40 @@ class _HomeScreenState extends State<HomeScreen> {
           keptCount: _keptIds.length,
           onClearQueue: _clearQueueFromSettings,
           onResetKept: _resetKept,
+          onViewKept: _openKeptList,
         ),
       ),
     );
     if (result == 'restart_tour') {
       _restartTours();
     }
+  }
+
+  Future<void> _openKeptList() async {
+    final keptItems = await _repo.getMediaByIds(_keptIds.toList());
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => KeptListScreen(
+          initialItems: keptItems,
+          onUnkeep: (item) async {
+            setState(() {
+              _keptIds.remove(item.id);
+              _actionHistory.removeWhere(
+                (r) => r.action == SwipeAction.keep && r.item.id == item.id,
+              );
+            });
+            await _persistKept();
+            // Refresh home counts and recent so the un-kept item reappears.
+            if (_view == _AppView.home) {
+              _loadHomeData();
+            } else if (_view == _AppView.swipe) {
+              _loadMedia();
+            }
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _openHistory() async {
@@ -518,6 +673,8 @@ class _HomeView extends StatelessWidget {
     required this.selectedSort,
     required this.isLoading,
     required this.errorMessage,
+    required this.queueCount,
+    required this.keptCount,
     required this.settingsKey,
     required this.historyKey,
     required this.firstCategoryKey,
@@ -532,6 +689,8 @@ class _HomeView extends StatelessWidget {
   final SortOption selectedSort;
   final bool isLoading;
   final String? errorMessage;
+  final int queueCount;
+  final int keptCount;
   final GlobalKey settingsKey;
   final GlobalKey historyKey;
   final GlobalKey firstCategoryKey;
@@ -542,155 +701,408 @@ class _HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final l10n = AppLocalizations.of(context)!;
+    final totalMedia = counts[GalleryCategory.allMedia] ?? 0;
+
+    return ListView(
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-          child: Row(
+        _HomeTopBar(
+          settingsKey: settingsKey,
+          historyKey: historyKey,
+          onOpenSettings: onOpenSettings,
+          onOpenHistory: onOpenHistory,
+        ),
+        const SizedBox(height: 18),
+        _HeroCard(
+          title: l10n.homeHeroTitle,
+          subtitle: l10n.homeHeroSubtitle,
+          totalCount: totalMedia,
+          queuedCount: queueCount,
+          keptCount: keptCount,
+          totalLabel: l10n.statsTotal,
+          queuedLabel: l10n.statsQueued,
+          keptLabel: l10n.statsKept,
+        ),
+        const SizedBox(height: 22),
+        _SortSegments(
+          selected: selectedSort,
+          onChanged: onSortChanged,
+        ),
+        const SizedBox(height: 24),
+        _SectionHeader(label: l10n.categories),
+        const SizedBox(height: 12),
+        _CategoryGrid(
+          counts: counts,
+          firstKey: firstCategoryKey,
+          onTap: onOpenCategory,
+        ),
+        const SizedBox(height: 24),
+        _SectionHeader(label: l10n.recent),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 220,
+          child: () {
+            if (isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (errorMessage != null) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  errorMessage!,
+                  style: const TextStyle(color: Color(0xFFD64545)),
+                ),
+              );
+            }
+            if (recent.isEmpty) return const SizedBox.shrink();
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              itemBuilder: (context, index) {
+                final item = recent[index];
+                return _RecentTile(
+                  item: item,
+                  onTap: () => onOpenCategory(GalleryCategory.allMedia),
+                );
+              },
+              separatorBuilder: (context, index) => const SizedBox(width: 10),
+              itemCount: recent.length,
+            );
+          }(),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeTopBar extends StatelessWidget {
+  const _HomeTopBar({
+    required this.settingsKey,
+    required this.historyKey,
+    required this.onOpenSettings,
+    required this.onOpenHistory,
+  });
+
+  final GlobalKey settingsKey;
+  final GlobalKey historyKey;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onOpenHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _CircleIconButton(
+          key: settingsKey,
+          icon: Icons.tune_rounded,
+          onTap: onOpenSettings,
+        ),
+        const Spacer(),
+        const Text(
+          'picme',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: Color(0xFF1F1F1F),
+          ),
+        ),
+        const Spacer(),
+        _CircleIconButton(
+          key: historyKey,
+          icon: Icons.history_rounded,
+          onTap: onOpenHistory,
+        ),
+      ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.7),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, size: 20, color: const Color(0xFF1F1F1F)),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.title,
+    required this.subtitle,
+    required this.totalCount,
+    required this.queuedCount,
+    required this.keptCount,
+    required this.totalLabel,
+    required this.queuedLabel,
+    required this.keptLabel,
+  });
+
+  final String title;
+  final String subtitle;
+  final int totalCount;
+  final int queuedCount;
+  final int keptCount;
+  final String totalLabel;
+  final String queuedLabel;
+  final String keptLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2A2A2A), Color(0xFF1A1A1A)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1F1F1F).withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
             children: [
-              IconButton(
-                key: settingsKey,
-                onPressed: onOpenSettings,
-                icon: const Icon(Icons.settings),
+              Expanded(
+                child: _HeroStat(
+                  value: totalCount,
+                  label: totalLabel,
+                  accent: Colors.white,
+                ),
               ),
-              const Spacer(),
-              const Text(
-                'Picme',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+              Container(
+                width: 1,
+                height: 36,
+                color: Colors.white.withValues(alpha: 0.12),
               ),
-              const Spacer(),
-              IconButton(
-                key: historyKey,
-                onPressed: onOpenHistory,
-                icon: const Icon(Icons.history),
+              Expanded(
+                child: _HeroStat(
+                  value: queuedCount,
+                  label: queuedLabel,
+                  accent: const Color(0xFFE07A5F),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 36,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  value: keptCount,
+                  label: keptLabel,
+                  accent: const Color(0xFFA3D9B1),
+                ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+
+  final int value;
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          _formatCount(value),
+          style: TextStyle(
+            color: accent,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-            children: [
-              SizedBox(
-                height: 40,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemBuilder: (context, i) {
-                    final option = SortOption.values[i];
-                    final active = option == selectedSort;
-                    return ChoiceChip(
-                      label: Text(_sortLabel(option)),
-                      selected: active,
-                      onSelected: (_) => onSortChanged(option),
-                      selectedColor: Colors.black,
-                      labelStyle: TextStyle(
-                        color: active ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      side: BorderSide.none,
-                      backgroundColor: Colors.grey.shade100,
-                    );
-                  },
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 8),
-                  itemCount: SortOption.values.length,
-                ),
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Categories',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              for (final (i, category) in GalleryCategory.values.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _CategoryTile(
-                    key: i == 0 ? firstCategoryKey : null,
-                    category: category,
-                    count: counts[category] ?? 0,
-                    onTap: () => onOpenCategory(category),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              const Text(
-                'Recent',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                )
-              else
-                SizedBox(
-                  height: 260,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (context, index) {
-                      final item = recent[index];
-                      return GestureDetector(
-                        onTap: () => onOpenCategory(GalleryCategory.allMedia),
-                        child: Container(
-                          width: 190,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            color: Colors.grey.shade200,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              _SimpleThumb(item: item),
-                              Positioned(
-                                left: 12,
-                                right: 12,
-                                bottom: 12,
-                                child: Text(
-                                  item.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: 10),
-                    itemCount: recent.length,
-                  ),
-                ),
-            ],
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.6),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  static String _sortLabel(SortOption option) {
-    switch (option) {
-      case SortOption.newestFirst:
-        return 'Newest';
-      case SortOption.oldestFirst:
-        return 'Oldest';
-      case SortOption.largestSizeFirst:
-        return 'Largest';
+  static String _formatCount(int n) {
+    if (n >= 1000) {
+      final k = n / 1000;
+      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
     }
+    return n.toString();
+  }
+}
+
+class _SortSegments extends StatelessWidget {
+  const _SortSegments({required this.selected, required this.onChanged});
+
+  final SortOption selected;
+  final ValueChanged<SortOption> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        children: [
+          for (final option in SortOption.values)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(option),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected == option
+                        ? const Color(0xFF1F1F1F)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    option.labelOf(l10n),
+                    style: TextStyle(
+                      color: selected == option
+                          ? Colors.white
+                          : const Color(0xFF1F1F1F),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
+        color: Color(0xFF1F1F1F),
+      ),
+    );
+  }
+}
+
+class _CategoryGrid extends StatelessWidget {
+  const _CategoryGrid({
+    required this.counts,
+    required this.firstKey,
+    required this.onTap,
+  });
+
+  final Map<GalleryCategory, int> counts;
+  final GlobalKey firstKey;
+  final ValueChanged<GalleryCategory> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        mainAxisExtent: 108,
+      ),
+      itemCount: GalleryCategory.values.length,
+      itemBuilder: (context, i) {
+        final category = GalleryCategory.values[i];
+        return _CategoryTile(
+          key: i == 0 ? firstKey : null,
+          category: category,
+          count: counts[category] ?? 0,
+          onTap: () => onTap(category),
+        );
+      },
+    );
   }
 }
 
@@ -708,33 +1120,52 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final palette = _paletteFor(category);
     return Material(
-      color: const Color(0xFFF5F5F5),
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.white.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.grey.shade300,
-                child: Icon(_categoryIcon(category), color: Colors.black87),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  category.label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: palette.bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _categoryIcon(category),
+                  size: 20,
+                  color: palette.fg,
                 ),
               ),
+              const Spacer(),
               Text(
-                count.toString(),
-                style: TextStyle(color: Colors.grey.shade600),
+                category.labelOf(l10n),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F1F1F),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _formatCount(count),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF8A8A8A),
+                ),
               ),
             ],
           ),
@@ -743,19 +1174,113 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 
+  static String _formatCount(int n) {
+    if (n >= 1000) {
+      final k = n / 1000;
+      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
+    }
+    return n.toString();
+  }
+
   static IconData _categoryIcon(GalleryCategory category) {
     switch (category) {
       case GalleryCategory.allMedia:
-        return Icons.photo_library_outlined;
+        return Icons.photo_library_rounded;
       case GalleryCategory.photos:
-        return Icons.photo_outlined;
+        return Icons.image_rounded;
       case GalleryCategory.videos:
-        return Icons.movie_outlined;
+        return Icons.play_circle_filled_rounded;
       case GalleryCategory.screenshots:
-        return Icons.screenshot_monitor_outlined;
+        return Icons.crop_square_rounded;
       case GalleryCategory.downloads:
-        return Icons.download_outlined;
+        return Icons.download_rounded;
     }
+  }
+
+  static _Palette _paletteFor(GalleryCategory category) {
+    switch (category) {
+      case GalleryCategory.allMedia:
+        return const _Palette(Color(0xFFFCE3DA), Color(0xFFE07A5F));
+      case GalleryCategory.photos:
+        return const _Palette(Color(0xFFE6DFFF), Color(0xFF6E5BC7));
+      case GalleryCategory.videos:
+        return const _Palette(Color(0xFFFFE2E5), Color(0xFFD45D6E));
+      case GalleryCategory.screenshots:
+        return const _Palette(Color(0xFFD8F0E0), Color(0xFF3F9E68));
+      case GalleryCategory.downloads:
+        return const _Palette(Color(0xFFD9ECFF), Color(0xFF3D7CC9));
+    }
+  }
+}
+
+class _Palette {
+  const _Palette(this.bg, this.fg);
+  final Color bg;
+  final Color fg;
+}
+
+class _RecentTile extends StatelessWidget {
+  const _RecentTile({required this.item, required this.onTap});
+
+  final MediaItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white.withValues(alpha: 0.6),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _SimpleThumb(item: item),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: 70,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color(0xCC000000)],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 10,
+              child: Text(
+                item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -776,29 +1301,44 @@ class _BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFEBEBEB))),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(
-            label: 'Clean',
-            icon: Icons.cleaning_services_outlined,
-            active: current == _AppView.home,
-            onTap: onHome,
-          ),
-          _NavItem(
-            key: reviewKey,
-            label: 'Review',
-            icon: Icons.auto_delete_outlined,
-            active: current == _AppView.queue,
-            onTap: onQueue,
-            badge: queueCount,
-          ),
-        ],
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _NavItem(
+                label: l10n.navClean,
+                icon: Icons.auto_awesome_rounded,
+                active: current == _AppView.home,
+                onTap: onHome,
+              ),
+            ),
+            Expanded(
+              child: _NavItem(
+                key: reviewKey,
+                label: l10n.navReview,
+                icon: Icons.delete_sweep_rounded,
+                active: current == _AppView.queue,
+                onTap: onQueue,
+                badge: queueCount,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -822,48 +1362,64 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? Colors.black : Colors.grey.shade600;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    final fg = active ? Colors.white : const Color(0xFF1F1F1F);
+    final bg = active ? const Color(0xFF1F1F1F) : Colors.transparent;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, color: color),
+                Icon(icon, color: fg, size: 18),
                 if ((badge ?? 0) > 0)
                   Positioned(
-                    right: -8,
-                    top: -7,
+                    right: -7,
+                    top: -6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
                       ),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: Colors.black,
+                        color: const Color(0xFFE07A5F),
                         borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white, width: 2),
                       ),
+                      alignment: Alignment.center,
                       child: Text(
                         '$badge',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
+                          height: 1.0,
                         ),
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -905,40 +1461,164 @@ class _SimpleThumb extends StatelessWidget {
   }
 }
 
+class _LimitedAccessBanner extends StatelessWidget {
+  const _LimitedAccessBanner({required this.onSelectMore});
+
+  final VoidCallback onSelectMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Material(
+        color: const Color(0xFFFFF1D6),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onSelectMore,
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5A85B).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    size: 16,
+                    color: Color(0xFFB07724),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.limitedAccessBanner,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7A5418),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.limitedAccessAction,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB07724),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 14,
+                  color: Color(0xFFB07724),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PermissionDenied extends StatelessWidget {
   const _PermissionDenied({required this.onRetry});
 
   final VoidCallback onRetry;
 
+  void _showRationale(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.permissionWhyTitle),
+        content: Text(l10n.permissionWhyBody),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.permissionWhyClose),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.lock_outline_rounded, size: 56),
-            const SizedBox(height: 12),
-            const Text(
-              'Galeri erişimi gerekli',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                size: 36,
+                color: Color(0xFF1F1F1F),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              l10n.permissionTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                color: Color(0xFF1F1F1F),
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Picme galerini görebilmen için fotoğraflara erişim izni vermen gerekiyor.',
+            Text(
+              l10n.permissionBody,
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: const Color(0xFF1F1F1F).withValues(alpha: 0.65),
+              ),
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Tekrar dene'),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(l10n.retryButton),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1F1F1F),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: PhotoManager.openSetting,
-              child: const Text('Ayarları aç'),
+              child: Text(l10n.openSettingsButton),
+            ),
+            TextButton(
+              onPressed: () => _showRationale(context),
+              child: Text(l10n.permissionWhyTitle),
             ),
           ],
         ),

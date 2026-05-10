@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:picme/src/features/home/presentation/home_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:picme/l10n/app_localizations.dart';
+import 'package:picme/src/app/root_gate.dart';
 
 class PicmeApp extends StatelessWidget {
   const PicmeApp({super.key});
@@ -7,14 +9,32 @@ class PicmeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const baseBg = Color(0xFFF7F2F2);
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.black,
-      brightness: Brightness.light,
-    ).copyWith(surface: baseBg);
+    const coral = Color(0xFFE07A5F);
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: coral,
+          brightness: Brightness.light,
+        ).copyWith(
+          surface: Colors.transparent,
+          surfaceContainerHighest: Colors.white.withValues(alpha: 0.78),
+          primary: const Color(0xFF1F1F1F),
+          onPrimary: Colors.white,
+          secondary: coral,
+        );
 
     return MaterialApp(
       title: 'Picme',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('tr'),
+        Locale('en'),
+      ],
       theme: ThemeData(
         colorScheme: colorScheme,
         scaffoldBackgroundColor: baseBg,
@@ -23,6 +43,32 @@ class PicmeApp extends StatelessWidget {
         fontFamily: 'Inter',
         snackBarTheme: const SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
+        ),
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+          side: BorderSide.none,
+          showCheckmark: false,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          color: Colors.white.withValues(alpha: 0.78),
+          surfaceTintColor: Colors.transparent,
+          margin: EdgeInsets.zero,
+        ),
+        listTileTheme: const ListTileThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
+        dividerColor: const Color(0x14000000),
+        scrollbarTheme: const ScrollbarThemeData(
+          thumbVisibility: WidgetStatePropertyAll(false),
         ),
       ),
       builder: (context, child) {
@@ -53,7 +99,7 @@ class PicmeApp extends StatelessWidget {
           ),
         );
       },
-      home: const HomeScreen(),
+      home: const RootGate(),
     );
   }
 }

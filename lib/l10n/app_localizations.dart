@@ -1,0 +1,770 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_en.dart';
+import 'app_localizations_tr.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('tr'),
+  ];
+
+  /// App name
+  ///
+  /// In tr, this message translates to:
+  /// **'Picme'**
+  String get appTitle;
+
+  /// Bottom nav - clean tab
+  ///
+  /// In tr, this message translates to:
+  /// **'Temizle'**
+  String get navClean;
+
+  /// Bottom nav - review/queue tab
+  ///
+  /// In tr, this message translates to:
+  /// **'İncele'**
+  String get navReview;
+
+  /// Home screen section header
+  ///
+  /// In tr, this message translates to:
+  /// **'Kategoriler'**
+  String get categories;
+
+  /// Home screen section header
+  ///
+  /// In tr, this message translates to:
+  /// **'Son Eklenenler'**
+  String get recent;
+
+  /// Hero card title on home
+  ///
+  /// In tr, this message translates to:
+  /// **'Galerini hafiflet'**
+  String get homeHeroTitle;
+
+  /// Hero card subtitle on home
+  ///
+  /// In tr, this message translates to:
+  /// **'Sola kaydır ve sırala, sağa kaydır ve sakla.'**
+  String get homeHeroSubtitle;
+
+  /// Stats label - total media count
+  ///
+  /// In tr, this message translates to:
+  /// **'Toplam'**
+  String get statsTotal;
+
+  /// Stats label - queued for deletion count
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyrukta'**
+  String get statsQueued;
+
+  /// Stats label - kept count
+  ///
+  /// In tr, this message translates to:
+  /// **'Saklanan'**
+  String get statsKept;
+
+  /// Settings section header
+  ///
+  /// In tr, this message translates to:
+  /// **'İzinler'**
+  String get settingsSectionPermissions;
+
+  /// Settings section header
+  ///
+  /// In tr, this message translates to:
+  /// **'Verilerim'**
+  String get settingsSectionData;
+
+  /// Settings section header
+  ///
+  /// In tr, this message translates to:
+  /// **'Yardım'**
+  String get settingsSectionGuide;
+
+  /// Settings section header
+  ///
+  /// In tr, this message translates to:
+  /// **'Hakkında'**
+  String get settingsSectionAbout;
+
+  /// Sort chip label
+  ///
+  /// In tr, this message translates to:
+  /// **'En Yeni'**
+  String get sortNewest;
+
+  /// Sort chip label
+  ///
+  /// In tr, this message translates to:
+  /// **'En Eski'**
+  String get sortOldest;
+
+  /// Sort chip label - largest file size first
+  ///
+  /// In tr, this message translates to:
+  /// **'En Büyük'**
+  String get sortLargest;
+
+  /// Gallery category
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Medya'**
+  String get catAllMedia;
+
+  /// Gallery category
+  ///
+  /// In tr, this message translates to:
+  /// **'Fotoğraflar'**
+  String get catPhotos;
+
+  /// Gallery category
+  ///
+  /// In tr, this message translates to:
+  /// **'Videolar'**
+  String get catVideos;
+
+  /// Gallery category
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran Görüntüleri'**
+  String get catScreenshots;
+
+  /// Gallery category
+  ///
+  /// In tr, this message translates to:
+  /// **'İndirilenler'**
+  String get catDownloads;
+
+  /// Permission denied screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Galeri erişimi gerekli'**
+  String get permissionTitle;
+
+  /// Permission denied screen body
+  ///
+  /// In tr, this message translates to:
+  /// **'Picme galerini görebilmen için fotoğraflara erişim izni vermen gerekiyor.'**
+  String get permissionBody;
+
+  /// Retry button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Tekrar dene'**
+  String get retryButton;
+
+  /// Open system settings button
+  ///
+  /// In tr, this message translates to:
+  /// **'Ayarları aç'**
+  String get openSettingsButton;
+
+  /// Snackbar after deletion
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe silindi'**
+  String itemsDeleted(int count);
+
+  /// Snackbar on delete error
+  ///
+  /// In tr, this message translates to:
+  /// **'Silinemedi: {error}'**
+  String deleteError(String error);
+
+  /// Settings screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Ayarlar'**
+  String get settingsTitle;
+
+  /// Settings tile title
+  ///
+  /// In tr, this message translates to:
+  /// **'Galeri izin ayarlarını aç'**
+  String get galleryPermTitle;
+
+  /// Settings tile subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Sistem izin ekranını açar'**
+  String get galleryPermSubtitle;
+
+  /// Settings tile title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silme kuyruğunu temizle'**
+  String get clearQueueTitle;
+
+  /// Settings tile subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe sırada'**
+  String clearQueueSubtitle(int count);
+
+  /// Confirmation dialog title
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyruk temizlensin mi?'**
+  String get clearQueueDialogTitle;
+
+  /// Confirmation dialog body
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyruktaki öğeler silinmez, sadece listeden çıkar.'**
+  String get clearQueueDialogBody;
+
+  /// Confirm button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Temizle'**
+  String get clearQueueConfirm;
+
+  /// Success snackbar
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyruk temizlendi'**
+  String get clearQueueSuccess;
+
+  /// Settings tile title
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanları sıfırla'**
+  String get resetKeptTitle;
+
+  /// Settings tile subtitle when empty
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz tutulan öğe yok'**
+  String get resetKeptSubtitleEmpty;
+
+  /// Settings tile subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe tekrar deste başına gelir'**
+  String resetKeptSubtitle(int count);
+
+  /// Confirmation dialog title
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanlar sıfırlansın mı?'**
+  String get resetKeptDialogTitle;
+
+  /// Confirmation dialog body
+  ///
+  /// In tr, this message translates to:
+  /// **'Sağa atarak \"tut\" dediğin öğeler tekrar deste başına gelir.'**
+  String get resetKeptDialogBody;
+
+  /// Confirm button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Sıfırla'**
+  String get resetKeptConfirm;
+
+  /// Success snackbar
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanlar sıfırlandı'**
+  String get resetKeptSuccess;
+
+  /// Settings tile title
+  ///
+  /// In tr, this message translates to:
+  /// **'Rehberi tekrar göster'**
+  String get restartTourTitle;
+
+  /// Settings tile subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygulama içi tanıtım turunu yeniden başlat'**
+  String get restartTourSubtitle;
+
+  /// Settings screen about text
+  ///
+  /// In tr, this message translates to:
+  /// **'Hızlı galeri temizliği. Kuyruktaki ve tutulan öğeler uygulama kapansa da korunur.'**
+  String get settingsAbout;
+
+  /// Cancel button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Vazgeç'**
+  String get cancel;
+
+  /// Queue screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'İnceleme Kuyruğu ({count})'**
+  String reviewQueueTitle(int count);
+
+  /// Empty queue message
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyruk boş.'**
+  String get queueEmpty;
+
+  /// Delete button label
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğeyi sil'**
+  String deleteItemsButton(int count);
+
+  /// Confirmation dialog title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silmeyi Onayla'**
+  String get confirmDeleteTitle;
+
+  /// Confirmation dialog body
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe kalıcı olarak silinecek.'**
+  String confirmDeleteBody(int count);
+
+  /// Delete button label
+  ///
+  /// In tr, this message translates to:
+  /// **'Sil'**
+  String get delete;
+
+  /// History screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silme Geçmişi'**
+  String get historyTitle;
+
+  /// Empty history message
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz silme geçmişi yok'**
+  String get historyEmpty;
+
+  /// History entry description
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe kalıcı silindi'**
+  String historyItemDeleted(int count);
+
+  /// Swipe hint label on card deck
+  ///
+  /// In tr, this message translates to:
+  /// **'Sol: Sil  •  Sağ: Tut'**
+  String get swipeHint;
+
+  /// Keep swipe hint chip
+  ///
+  /// In tr, this message translates to:
+  /// **'TUT'**
+  String get keep;
+
+  /// Delete swipe hint chip
+  ///
+  /// In tr, this message translates to:
+  /// **'SİL'**
+  String get deleteLabel;
+
+  /// Undo button tooltip
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri al'**
+  String get undoButton;
+
+  /// Undo button on empty state
+  ///
+  /// In tr, this message translates to:
+  /// **'Son hamleyi geri al'**
+  String get undoLastMove;
+
+  /// Empty swipe deck message
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm medyalar tarandı.'**
+  String get allScanned;
+
+  /// Coach overlay skip button
+  ///
+  /// In tr, this message translates to:
+  /// **'Atla'**
+  String get coachSkip;
+
+  /// Coach tooltip next button
+  ///
+  /// In tr, this message translates to:
+  /// **'Sonraki'**
+  String get coachNext;
+
+  /// Coach tooltip last step button
+  ///
+  /// In tr, this message translates to:
+  /// **'Tamam'**
+  String get coachDone;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Ayarlar'**
+  String get coachHomeSettingsTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Buradan galeri izinlerini, kuyruğu ve tutulanları yönetebilirsin.'**
+  String get coachHomeSettingsDesc;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir kategori seç'**
+  String get coachHomeCategoryTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Medya, Fotoğraflar, Videolar gibi kategorilerden birine dokunarak temizliğe başla.'**
+  String get coachHomeCategoryDesc;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silme geçmişi'**
+  String get coachHomeHistoryTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Kalıcı olarak sildiğin paketlerin kaydını buradan görebilirsin.'**
+  String get coachHomeHistoryDesc;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silme kuyruğu'**
+  String get coachHomeQueueTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Sola kaydırdığın öğeler kuyrukta birikir; toplu kalıcı silmeyi buradan yaparsın.'**
+  String get coachHomeQueueDesc;
+
+  /// Swipe intro headline
+  ///
+  /// In tr, this message translates to:
+  /// **'Sola sil, sağa sakla'**
+  String get coachSwipeDecideTitle;
+
+  /// Swipe intro body
+  ///
+  /// In tr, this message translates to:
+  /// **'Galerini bir desteye çevirdik. Beğendiğin fotoğrafı sağa, gözden çıkardığını sola kaydır. Tek dokun büyük önizleme açar.'**
+  String get coachSwipeDecideDesc;
+
+  /// Swipe intro primary action
+  ///
+  /// In tr, this message translates to:
+  /// **'Anladım, başlayalım'**
+  String get swipeIntroCta;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri al'**
+  String get coachSwipeUndoTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Son hamleni buradan geri al. Sağa atılan sağdan, sola atılan soldan geri gelir.'**
+  String get coachSwipeUndoDesc;
+
+  /// Coach step title
+  ///
+  /// In tr, this message translates to:
+  /// **'Silme kuyruğu'**
+  String get coachSwipeQueueTitle;
+
+  /// Coach step description
+  ///
+  /// In tr, this message translates to:
+  /// **'Sola attıkların burada birikir. Hepsini gözden geçirip toplu kalıcı silme yapabilirsin.'**
+  String get coachSwipeQueueDesc;
+
+  /// Welcome screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Picme\'ye Hoş Geldin'**
+  String get welcomeTitle;
+
+  /// Welcome screen subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Galerinizi hızlıca temizleyin'**
+  String get welcomeSubtitle;
+
+  /// Welcome feature 1 title
+  ///
+  /// In tr, this message translates to:
+  /// **'Tamamen Yerel'**
+  String get welcomeFeature1Title;
+
+  /// Welcome feature 1 body
+  ///
+  /// In tr, this message translates to:
+  /// **'Galerin yalnızca cihazında taranır. Hiçbir veri sunucuya gönderilmez.'**
+  String get welcomeFeature1Body;
+
+  /// Welcome feature 2 title
+  ///
+  /// In tr, this message translates to:
+  /// **'Sen Onaylamadan Silinmez'**
+  String get welcomeFeature2Title;
+
+  /// Welcome feature 2 body
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğeler önce kuyruğa alınır; kalıcı silme ancak senin onayınla gerçekleşir.'**
+  String get welcomeFeature2Body;
+
+  /// Welcome feature 3 title
+  ///
+  /// In tr, this message translates to:
+  /// **'Gizlilik Önce Gelir'**
+  String get welcomeFeature3Title;
+
+  /// Welcome feature 3 body
+  ///
+  /// In tr, this message translates to:
+  /// **'Fotoğraf analizi, reklam hedefleme veya üçüncü taraf paylaşımı yoktur.'**
+  String get welcomeFeature3Body;
+
+  /// Welcome continue button
+  ///
+  /// In tr, this message translates to:
+  /// **'Galerime İzin Ver'**
+  String get welcomeContinueButton;
+
+  /// Welcome privacy note
+  ///
+  /// In tr, this message translates to:
+  /// **'Devam ederek Gizlilik Politikası\'nı kabul etmiş olursun.'**
+  String get welcomePrivacyNote;
+
+  /// Permission rationale dialog title
+  ///
+  /// In tr, this message translates to:
+  /// **'Neden galeri erişimi?'**
+  String get permissionWhyTitle;
+
+  /// Permission rationale dialog body
+  ///
+  /// In tr, this message translates to:
+  /// **'Picme, fotoğraf ve videolarınızı listeleyip kaydırayarak gözden geçirmenizi sağlamak için galeri okuma iznine ihtiyaç duyar. Hiçbir dosya izinsiz silinmez ve verileriniz cihazınızda kalır.'**
+  String get permissionWhyBody;
+
+  /// Permission rationale dialog close button
+  ///
+  /// In tr, this message translates to:
+  /// **'Anladım'**
+  String get permissionWhyClose;
+
+  /// Limited access banner text
+  ///
+  /// In tr, this message translates to:
+  /// **'Yalnızca seçili medyalara erişim var.'**
+  String get limitedAccessBanner;
+
+  /// Limited access banner action button
+  ///
+  /// In tr, this message translates to:
+  /// **'Daha fazla seç'**
+  String get limitedAccessAction;
+
+  /// Queue header summary with size
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe • ~{mb} MB'**
+  String queueSummary(int count, String mb);
+
+  /// Delete button label with size
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğeyi sil (~{mb} MB)'**
+  String deleteItemsButtonWithSize(int count, String mb);
+
+  /// Confirmation dialog body with size
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe (~{mb} MB) kalıcı olarak silinecek. Bu işlem geri alınamaz.'**
+  String confirmDeleteBodyWithSize(int count, String mb);
+
+  /// Privacy policy settings tile title
+  ///
+  /// In tr, this message translates to:
+  /// **'Gizlilik Politikası'**
+  String get privacyPolicyTitle;
+
+  /// Privacy policy settings tile subtitle
+  ///
+  /// In tr, this message translates to:
+  /// **'Verilerinizin nasıl kullanıldığını öğrenin'**
+  String get privacyPolicySubtitle;
+
+  /// Settings tile to open kept items list
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanları görüntüle'**
+  String get viewKeptTitle;
+
+  /// Settings tile subtitle showing kept count
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} öğe tutuluyor'**
+  String viewKeptSubtitle(int count);
+
+  /// Kept list screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanlar ({count})'**
+  String keptListTitle(int count);
+
+  /// Empty state for kept list screen
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz tutulan öğe yok.'**
+  String get keptListEmpty;
+
+  /// Tooltip on remove button in kept list
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutulanlardan çıkar'**
+  String get unkeepTooltip;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) =>
+      <String>['en', 'tr'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'tr':
+      return AppLocalizationsTr();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}

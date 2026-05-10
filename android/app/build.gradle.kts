@@ -6,6 +6,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 val keystoreProperties = Properties()
@@ -49,6 +51,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        ndk {
+            // Produce *.so.sym sidecars alongside stripped native libs. Required
+            // by Flutter's post-build verification of release app bundles.
+            debugSymbolLevel = "SYMBOL_TABLE"
+        }
     }
 
     signingConfigs {
@@ -70,17 +78,15 @@ android {
 
     packaging {
         jniLibs {
-            keepDebugSymbols += "**/*.so"
+            // Extract native libs to filesystem on install. ReLinker (used by
+            // FlutterJNI on some devices and by `datastore_shared_counter`)
+            // needs filesystem-resident .so files; AGP's default of memory-mapped
+            // libs causes "Could not find 'libflutter.so'" crashes on app launch.
+            useLegacyPackaging = true
         }
     }
 }
 
 flutter {
     source = "../.."
-}
-
-tasks.configureEach {
-    if (name.contains("stripReleaseDebugSymbols", ignoreCase = true)) {
-        enabled = false
-    }
 }

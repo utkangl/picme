@@ -1,5 +1,7 @@
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "C:/Users/utkan/.cursor/projects/c-Users-utkan-flutter-projects-picme/assets/c__Users_utkan_AppData_Roaming_Cursor_User_workspaceStorage_empty-window_images_image-8bd6802c-d4ae-4ece-a65f-215c655de78e.png"
+  image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
