@@ -21,6 +21,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories => 'Categories';
 
   @override
+  String categoriesShowAll(int count) {
+    return 'Show all ($count)';
+  }
+
+  @override
+  String get categoriesCollapse => 'Show less';
+
+  @override
   String get recent => 'Recent';
 
   @override
@@ -42,6 +50,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionPermissions => 'Permissions';
 
   @override
+  String get settingsSectionLanguage => 'Language';
+
+  @override
   String get settingsSectionData => 'My data';
 
   @override
@@ -49,6 +60,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSectionAbout => 'About';
+
+  @override
+  String get languageTitle => 'App language';
+
+  @override
+  String get languageSystem => 'Use system language';
+
+  @override
+  String get languageTurkish => 'Turkish';
+
+  @override
+  String get languageEnglish => 'English';
 
   @override
   String get sortNewest => 'Newest';
@@ -462,10 +485,4 @@ class AppLocalizationsEn extends AppLocalizations {
   String historyItemDeletedWithSize(int count, String amount) {
     return '$count items · $amount';
   }
-
-  @override
-  String get settingsTestCrashTitle => 'Test Crash (developer)';
-
-  @override
-  String get settingsTestCrashSubtitle => 'Force a crash to verify Crashlytics';
 }

@@ -122,6 +122,18 @@ abstract class AppLocalizations {
   /// **'Kategoriler'**
   String get categories;
 
+  /// Expand categories grid to show every tile
+  ///
+  /// In tr, this message translates to:
+  /// **'Tümünü göster ({count})'**
+  String categoriesShowAll(int count);
+
+  /// Collapse expanded categories grid
+  ///
+  /// In tr, this message translates to:
+  /// **'Daha az göster'**
+  String get categoriesCollapse;
+
   /// Home screen section header
   ///
   /// In tr, this message translates to:
@@ -167,6 +179,12 @@ abstract class AppLocalizations {
   /// Settings section header
   ///
   /// In tr, this message translates to:
+  /// **'Dil'**
+  String get settingsSectionLanguage;
+
+  /// Settings section header
+  ///
+  /// In tr, this message translates to:
   /// **'Verilerim'**
   String get settingsSectionData;
 
@@ -181,6 +199,30 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Hakkında'**
   String get settingsSectionAbout;
+
+  /// Settings tile title for language picker
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygulama dili'**
+  String get languageTitle;
+
+  /// Language option - follow system
+  ///
+  /// In tr, this message translates to:
+  /// **'Sistem dilini kullan'**
+  String get languageSystem;
+
+  /// Language option
+  ///
+  /// In tr, this message translates to:
+  /// **'Türkçe'**
+  String get languageTurkish;
+
+  /// Language option
+  ///
+  /// In tr, this message translates to:
+  /// **'İngilizce'**
+  String get languageEnglish;
 
   /// Sort chip label
   ///
@@ -901,18 +943,6 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'{count} öğe silindi · {amount}'**
   String historyItemDeletedWithSize(int count, String amount);
-
-  /// Hidden dev-only test crash button title
-  ///
-  /// In tr, this message translates to:
-  /// **'Test Crash (geliştirici)'**
-  String get settingsTestCrashTitle;
-
-  /// Hidden dev-only test crash button subtitle
-  ///
-  /// In tr, this message translates to:
-  /// **'Crashlytics doğrulaması için uygulamayı düşür'**
-  String get settingsTestCrashSubtitle;
 }
 
 class _AppLocalizationsDelegate

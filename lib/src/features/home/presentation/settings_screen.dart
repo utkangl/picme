@@ -1,7 +1,8 @@
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:picme/l10n/app_localizations.dart';
+import 'package:picme/src/app/app_locale_controller.dart';
+import 'package:picme/src/core/config/external_links.dart';
 import 'package:picme/src/core/data/review_prompter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -59,6 +60,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: PhotoManager.openSetting,
                 ),
               ],
+            ),
+            const SizedBox(height: 20),
+
+            _SectionLabel(text: l10n.settingsSectionLanguage),
+            ValueListenableBuilder<Locale?>(
+              valueListenable: AppLocaleController.locale,
+              builder: (context, selectedLocale, _) {
+                return _SettingsCard(
+                  children: [
+                    _SettingsTile(
+                      icon: Icons.translate_rounded,
+                      iconBg: const Color(0xFFE5E5EA),
+                      iconFg: const Color(0xFF1F1F1F),
+                      title: l10n.languageTitle,
+                      subtitle: _localeLabel(l10n, selectedLocale),
+                      trailing: Icons.chevron_right_rounded,
+                      onTap: () => _showLanguageSheet(context, l10n),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -163,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: Icons.open_in_new_rounded,
                   onTap: () => launchUrl(
                     Uri.parse(
-                      'mailto:utkanvocal@gmail.com?subject=Picme%20feedback',
+                      'mailto:utkangul994@gmail.com?subject=Picme%20feedback',
                     ),
                     mode: LaunchMode.externalApplication,
                   ),
@@ -176,30 +198,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: l10n.privacyPolicySubtitle,
                   trailing: Icons.open_in_new_rounded,
                   onTap: () => launchUrl(
-                    Uri.parse(
-                      'https://docs.google.com/document/d/1Vv6y8LtTXQ08syNi528DMNpScRSrLh5GhluWmu759TY/edit?usp=sharing',
-                    ),
+                    Uri.parse(privacyPolicyUrl),
                     mode: LaunchMode.externalApplication,
                   ),
-                ),
-              ],
-            ),
-
-            // Crashlytics smoke-test entry. Visible in every build for now
-            // so we can verify on a real release-channel install. Once
-            // Crashlytics is confirmed end-to-end this whole block can be
-            // removed (or moved back behind `kDebugMode`).
-            const SizedBox(height: 20),
-            _SectionLabel(text: 'Debug'),
-            _SettingsCard(
-              children: [
-                _SettingsTile(
-                  icon: Icons.bug_report_rounded,
-                  iconBg: const Color(0xFFFFE0E0),
-                  iconFg: const Color(0xFFC93737),
-                  title: l10n.settingsTestCrashTitle,
-                  subtitle: l10n.settingsTestCrashSubtitle,
-                  onTap: () => FirebaseCrashlytics.instance.crash(),
                 ),
               ],
             ),
@@ -208,9 +209,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Center(
               child: Column(
                 children: [
-                  const Text(
-                    'picme',
-                    style: TextStyle(
+                  Text(
+                    l10n.appTitle.toLowerCase(),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.4,
@@ -275,6 +276,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(successText)));
+    }
+  }
+
+  Future<void> _showLanguageSheet(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final options = <({Locale? locale, String label})>[
+      (locale: null, label: l10n.languageSystem),
+      (locale: const Locale('tr'), label: l10n.languageTurkish),
+      (locale: const Locale('en'), label: l10n.languageEnglish),
+    ];
+    final currentCode = AppLocaleController.locale.value?.languageCode;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.languageTitle,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  for (final option in options)
+                    Builder(
+                      builder: (context) {
+                        final isSelected =
+                            option.locale == null && currentCode == null ||
+                            option.locale?.languageCode == currentCode;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(option.label),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_rounded)
+                              : null,
+                          onTap: () async {
+                            await AppLocaleController.setLocale(option.locale);
+                            if (sheetContext.mounted) {
+                              Navigator.of(sheetContext).pop();
+                            }
+                          },
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _localeLabel(AppLocalizations l10n, Locale? locale) {
+    switch (locale?.languageCode) {
+      case 'tr':
+        return l10n.languageTurkish;
+      case 'en':
+        return l10n.languageEnglish;
+      default:
+        return l10n.languageSystem;
     }
   }
 }

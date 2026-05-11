@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:picme/l10n/app_localizations.dart';
+import 'package:picme/src/core/config/external_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -103,9 +104,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               Center(
                 child: GestureDetector(
                   onTap: () => launchUrl(
-                    Uri.parse(
-                      'https://docs.google.com/document/d/1Vv6y8LtTXQ08syNi528DMNpScRSrLh5GhluWmu759TY/edit?usp=sharing',
-                    ),
+                    Uri.parse(privacyPolicyUrl),
                     mode: LaunchMode.externalApplication,
                   ),
                   child: Text(

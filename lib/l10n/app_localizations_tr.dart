@@ -21,6 +21,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get categories => 'Kategoriler';
 
   @override
+  String categoriesShowAll(int count) {
+    return 'Tümünü göster ($count)';
+  }
+
+  @override
+  String get categoriesCollapse => 'Daha az göster';
+
+  @override
   String get recent => 'Son Eklenenler';
 
   @override
@@ -42,6 +50,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsSectionPermissions => 'İzinler';
 
   @override
+  String get settingsSectionLanguage => 'Dil';
+
+  @override
   String get settingsSectionData => 'Verilerim';
 
   @override
@@ -49,6 +60,18 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsSectionAbout => 'Hakkında';
+
+  @override
+  String get languageTitle => 'Uygulama dili';
+
+  @override
+  String get languageSystem => 'Sistem dilini kullan';
+
+  @override
+  String get languageTurkish => 'Türkçe';
+
+  @override
+  String get languageEnglish => 'İngilizce';
 
   @override
   String get sortNewest => 'En Yeni';
@@ -464,11 +487,4 @@ class AppLocalizationsTr extends AppLocalizations {
   String historyItemDeletedWithSize(int count, String amount) {
     return '$count öğe silindi · $amount';
   }
-
-  @override
-  String get settingsTestCrashTitle => 'Test Crash (geliştirici)';
-
-  @override
-  String get settingsTestCrashSubtitle =>
-      'Crashlytics doğrulaması için uygulamayı düşür';
 }

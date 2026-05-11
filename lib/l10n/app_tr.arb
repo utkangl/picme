@@ -13,6 +13,17 @@
   "categories": "Kategoriler",
   "@categories": {"description": "Home screen section header"},
 
+  "categoriesShowAll": "Tümünü göster ({count})",
+  "@categoriesShowAll": {
+    "description": "Expand categories grid to show every tile",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "categoriesCollapse": "Daha az göster",
+  "@categoriesCollapse": {"description": "Collapse expanded categories grid"},
+
   "recent": "Son Eklenenler",
   "@recent": {"description": "Home screen section header"},
 
@@ -34,6 +45,9 @@
   "settingsSectionPermissions": "İzinler",
   "@settingsSectionPermissions": {"description": "Settings section header"},
 
+  "settingsSectionLanguage": "Dil",
+  "@settingsSectionLanguage": {"description": "Settings section header"},
+
   "settingsSectionData": "Verilerim",
   "@settingsSectionData": {"description": "Settings section header"},
 
@@ -42,6 +56,18 @@
 
   "settingsSectionAbout": "Hakkında",
   "@settingsSectionAbout": {"description": "Settings section header"},
+
+  "languageTitle": "Uygulama dili",
+  "@languageTitle": {"description": "Settings tile title for language picker"},
+
+  "languageSystem": "Sistem dilini kullan",
+  "@languageSystem": {"description": "Language option - follow system"},
+
+  "languageTurkish": "Türkçe",
+  "@languageTurkish": {"description": "Language option"},
+
+  "languageEnglish": "İngilizce",
+  "@languageEnglish": {"description": "Language option"},
 
   "sortNewest": "En Yeni",
   "@sortNewest": {"description": "Sort chip label"},
@@ -495,11 +521,5 @@
       "count": {"type": "int"},
       "amount": {"type": "String"}
     }
-  },
-
-  "settingsTestCrashTitle": "Test Crash (geliştirici)",
-  "@settingsTestCrashTitle": {"description": "Hidden dev-only test crash button title"},
-
-  "settingsTestCrashSubtitle": "Crashlytics doğrulaması için uygulamayı düşür",
-  "@settingsTestCrashSubtitle": {"description": "Hidden dev-only test crash button subtitle"}
+  }
 }

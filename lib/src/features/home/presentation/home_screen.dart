@@ -687,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onOpenHistory: _openHistory,
               onOpenCategory: _openSwipeForCategory,
               onOpenFolder: _openSwipeForFolder,
-              onOpenQueue: _openQueueScreen,
+              onOpenQueue: () => setState(() => _view = _AppView.queue),
               onOpenKept: _openKeptList,
             ),
           ),
@@ -789,45 +789,6 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => HistoryScreen(entries: _deleteHistory),
       ),
     );
-  }
-
-  /// Opens the delete-queue review screen as a pushed route so it gets the
-  /// standard slide-in transition (matching the Kept list flow). The bottom
-  /// nav still uses the in-place `_view = _AppView.queue` swap, so home and
-  /// queue continue to feel like sibling tabs from the nav bar.
-  ///
-  /// Wraps the screen in a [StatefulBuilder] so that mutations from
-  /// [_removeFromQueue] / [_confirmDeleteQueue] cause the pushed widget to
-  /// rebuild — the route was created lazily, so home's outer setState alone
-  /// wouldn't reach it.
-  Future<void> _openQueueScreen() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (routeContext) => StatefulBuilder(
-          builder: (innerContext, innerSetState) {
-            return Scaffold(
-              backgroundColor: Colors.transparent,
-              body: DeleteQueueScreen(
-                queue: _deleteQueue,
-                onRemove: (item) {
-                  _removeFromQueue(item);
-                  innerSetState(() {});
-                },
-                onConfirmDelete: () async {
-                  await _confirmDeleteQueue();
-                  if (innerContext.mounted) {
-                    Navigator.of(innerContext).pop();
-                  }
-                },
-                onClose: () => Navigator.of(routeContext).pop(),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-    if (!mounted) return;
-    setState(() {});
   }
 
   void _clearQueueFromSettings() {
@@ -941,8 +902,10 @@ class _HomeView extends StatelessWidget {
           totalLabel: l10n.statsTotal,
           queuedLabel: l10n.statsQueued,
           keptLabel: l10n.statsKept,
-          onTapQueued: queueCount > 0 ? onOpenQueue : null,
-          onTapKept: keptCount > 0 ? onOpenKept : null,
+          onTapTotal: onOpenHistory,
+          onTapSubtitle: totalSavedBytes > 0 ? onOpenHistory : null,
+          onTapQueued: onOpenQueue,
+          onTapKept: onOpenKept,
         ),
         const SizedBox(height: 22),
         Row(
@@ -1098,8 +1061,10 @@ class _HeroCard extends StatelessWidget {
     required this.totalLabel,
     required this.queuedLabel,
     required this.keptLabel,
+    this.onTapTotal,
     this.onTapQueued,
     this.onTapKept,
+    this.onTapSubtitle,
   });
 
   final String title;
@@ -1110,8 +1075,10 @@ class _HeroCard extends StatelessWidget {
   final String totalLabel;
   final String queuedLabel;
   final String keptLabel;
+  final VoidCallback? onTapTotal;
   final VoidCallback? onTapQueued;
   final VoidCallback? onTapKept;
+  final VoidCallback? onTapSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1146,15 +1113,49 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
+          if (onTapSubtitle == null)
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            )
+          else
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTapSubtitle,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
           const SizedBox(height: 18),
           Row(
             children: [
@@ -1163,6 +1164,7 @@ class _HeroCard extends StatelessWidget {
                   value: totalCount,
                   label: totalLabel,
                   accent: Colors.white,
+                  onTap: onTapTotal,
                 ),
               ),
               Container(
@@ -1376,7 +1378,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _CategoryGrid extends StatelessWidget {
+class _CategoryGrid extends StatefulWidget {
   const _CategoryGrid({
     required this.counts,
     required this.folders,
@@ -1396,43 +1398,119 @@ class _CategoryGrid extends StatelessWidget {
   final ValueChanged<AssetPathEntity> onTapFolder;
 
   @override
+  State<_CategoryGrid> createState() => _CategoryGridState();
+}
+
+class _CategoryGridState extends State<_CategoryGrid> {
+  static const int _collapsedItemCount = 6;
+
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final categoryCount = GalleryCategory.values.length;
-    final total = categoryCount + folders.length;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        mainAxisExtent: 116,
+    final total = categoryCount + widget.folders.length;
+    final visibleCount = _expanded
+        ? total
+        : total.clamp(0, _collapsedItemCount);
+    final canExpand = total > _collapsedItemCount;
+
+    return Column(
+      children: [
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            mainAxisExtent: 116,
+          ),
+          itemCount: visibleCount,
+          itemBuilder: (context, i) {
+            if (i < categoryCount) {
+              final category = GalleryCategory.values[i];
+              return _BrowseTile(
+                key: i == 0 ? widget.firstKey : null,
+                label: category.labelOf(l10n),
+                count: widget.counts[category] ?? 0,
+                bytes: widget.categoryBytes[category],
+                icon: _CategoryTile._iconFor(category),
+                palette: _CategoryTile._paletteFor(category),
+                onTap: () => widget.onTap(category),
+              );
+            }
+            final folder = widget.folders[i - categoryCount];
+            return _BrowseTile(
+              label: folder.entity.name,
+              count: folder.count,
+              bytes: widget.folderBytes[folder.entity.id],
+              icon: _CategoryTile._iconForFolder(folder.entity.name),
+              palette: _CategoryTile._paletteForFolder(folder.entity.name),
+              onTap: () => widget.onTapFolder(folder.entity),
+            );
+          },
+        ),
+        if (canExpand) ...[
+          const SizedBox(height: 12),
+          _CategoryGridToggle(
+            expanded: _expanded,
+            label: _expanded
+                ? l10n.categoriesCollapse
+                : l10n.categoriesShowAll(total),
+            onTap: () => setState(() => _expanded = !_expanded),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CategoryGridToggle extends StatelessWidget {
+  const _CategoryGridToggle({
+    required this.expanded,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool expanded;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.68),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F1F1F),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                expanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: const Color(0xFF1F1F1F),
+              ),
+            ],
+          ),
+        ),
       ),
-      itemCount: total,
-      itemBuilder: (context, i) {
-        if (i < categoryCount) {
-          final category = GalleryCategory.values[i];
-          return _BrowseTile(
-            key: i == 0 ? firstKey : null,
-            label: category.labelOf(l10n),
-            count: counts[category] ?? 0,
-            bytes: categoryBytes[category],
-            icon: _CategoryTile._iconFor(category),
-            palette: _CategoryTile._paletteFor(category),
-            onTap: () => onTap(category),
-          );
-        }
-        final folder = folders[i - categoryCount];
-        return _BrowseTile(
-          label: folder.entity.name,
-          count: folder.count,
-          bytes: folderBytes[folder.entity.id],
-          icon: _CategoryTile._iconForFolder(folder.entity.name),
-          palette: _CategoryTile._paletteForFolder(folder.entity.name),
-          onTap: () => onTapFolder(folder.entity),
-        );
-      },
     );
   }
 }

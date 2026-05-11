@@ -5,6 +5,13 @@
   "navClean": "Clean",
   "navReview": "Review",
   "categories": "Categories",
+  "categoriesShowAll": "Show all ({count})",
+  "@categoriesShowAll": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "categoriesCollapse": "Show less",
   "recent": "Recent",
   "homeHeroTitle": "Lighten your gallery",
   "homeHeroSubtitle": "Swipe left to queue, right to keep.",
@@ -12,9 +19,14 @@
   "statsQueued": "Queued",
   "statsKept": "Kept",
   "settingsSectionPermissions": "Permissions",
+  "settingsSectionLanguage": "Language",
   "settingsSectionData": "My data",
   "settingsSectionGuide": "Help",
   "settingsSectionAbout": "About",
+  "languageTitle": "App language",
+  "languageSystem": "Use system language",
+  "languageTurkish": "Turkish",
+  "languageEnglish": "English",
   "sortNewest": "Newest",
   "sortOldest": "Oldest",
   "sortLargest": "Largest",
@@ -241,8 +253,5 @@
       "count": {"type": "int"},
       "amount": {"type": "String"}
     }
-  },
-
-  "settingsTestCrashTitle": "Test Crash (developer)",
-  "settingsTestCrashSubtitle": "Force a crash to verify Crashlytics"
+  }
 }
