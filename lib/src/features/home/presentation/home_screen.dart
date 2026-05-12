@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/l10n/app_localizations.dart';
+import 'package:picme/src/core/ads/admob_config.dart';
+import 'package:picme/src/core/ads/picme_banner_ad_slot.dart';
 import 'package:picme/src/core/models/delete_history_entry.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
 import 'package:picme/src/core/ui/app_coach.dart';
+import 'package:picme/src/core/ui/app_startup_loading_screen.dart';
 import 'package:picme/src/core/util/bytes_format.dart';
 import 'package:picme/src/features/home/presentation/history_screen.dart';
 import 'package:picme/src/features/home/presentation/settings_screen.dart';
@@ -36,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _keptPrefsKey = 'picme_kept_ids';
   static const String _homeTourPrefsKey = 'picme_home_tour_done';
   static const String _swipeTourPrefsKey = 'picme_swipe_tour_done';
+  static const int _firstSponsoredCardAfter = 20;
+  static const int _sponsoredCardCooldown = 40;
 
   final GalleryRepository _repo = GalleryRepository();
   final List<MediaItem> _deleteQueue = [];
@@ -51,10 +56,12 @@ class _HomeScreenState extends State<HomeScreen> {
   GalleryCategory _selectedCategory = GalleryCategory.allMedia;
   SortOption _selectedSort = SortOption.newestFirst;
   MediaFilters _activeFilters = MediaFilters.none;
+
   /// When non-null, the swipe screen is browsing a specific app folder
   /// (e.g. WhatsApp Images) instead of one of the predefined categories.
   String? _selectedFolderId;
   String? _selectedFolderName;
+
   /// Discovered media folders/buckets on the device. Used to expose
   /// app-specific media (Snapchat, WhatsApp, Telegram, Instagram, …) as
   /// dynamic categories in the home grid.
@@ -66,10 +73,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<GalleryCategory, int> _counts = {
     for (final c in GalleryCategory.values) c: 0,
   };
+
   /// Total bytes per predefined category, lazily filled in by
   /// [_loadCategorySizes] after the home grid is rendered. `null` means
   /// "not resolved yet" — the tile shows a count-only label until then.
   final Map<GalleryCategory, int> _categoryBytes = {};
+
   /// Total bytes per discovered folder, keyed by [AssetPathEntity.id].
   final Map<String, int> _folderBytes = {};
   bool _isLoading = true;
@@ -79,6 +88,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _categoryNotFound = false;
   PermissionState? _permissionState;
   String? _errorMessage;
+  int _committedSwipeCount = 0;
+  int _nextSponsoredCardAt = _firstSponsoredCardAfter;
+  int _sponsoredCardSerial = 0;
+  bool _showSponsoredCard = false;
+  String? _ignoreAdCountForNextSwipeItemId;
+  bool _showStartupLoading = true;
+  int _deckTotalCount = 0;
+  int _remainingDeckCount = 0;
 
   Set<String> get _queueIds => _deleteQueue.map((item) => item.id).toSet();
 
@@ -117,9 +134,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (state.isAuth || state.hasAccess) {
       await _hydrateQueueFromStorage();
       await _loadHomeData();
+      if (!mounted) return;
+      setState(() => _showStartupLoading = false);
       _maybeStartHomeTour();
     } else {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _showStartupLoading = false;
+      });
     }
   }
 
@@ -254,15 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
     });
     try {
-      final recent = await _repo.getMedia(
-        category: GalleryCategory.allMedia,
-        sortOption: SortOption.newestFirst,
-        page: 0,
-        pageSize: 15,
-      );
+      final recent = await _loadRecentPreview();
       // Use getCount() for category totals — much faster than loading all items.
-      final countFutures = GalleryCategory.values
-          .map((cat) => _repo.getCount(cat));
+      final countFutures = GalleryCategory.values.map(
+        (cat) => _repo.getCount(cat),
+      );
       final countResults = await Future.wait(countFutures);
       final counts = <GalleryCategory, int>{};
       for (var i = 0; i < GalleryCategory.values.length; i++) {
@@ -348,23 +366,19 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         return;
       }
-      final items = await _repo.getMedia(
-        category: _selectedCategory,
-        sortOption: _selectedSort,
-        page: 0,
-        pageSize: GalleryRepository.defaultPageSize,
-        filters: _activeFilters,
-        folderPathId: _selectedFolderId,
-      );
       final totalCount = await _repo.getCount(
         _selectedCategory,
         folderPathId: _selectedFolderId,
       );
+      final chunk = await _loadVisibleMediaChunk(startPage: 0);
       if (!mounted) return;
       setState(() {
-        _media = _orderForSwipe(_filterQueued(items));
+        _media = chunk.items;
         _actionHistory.clear();
-        _hasMoreMedia = totalCount > GalleryRepository.defaultPageSize;
+        _currentMediaPage = chunk.lastPage;
+        _hasMoreMedia = chunk.hasMore;
+        _deckTotalCount = totalCount;
+        _remainingDeckCount = totalCount;
         _isLoading = false;
       });
       unawaited(_warmDeckSizes());
@@ -383,20 +397,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoadingNextPage = true);
     try {
       final nextPage = _currentMediaPage + 1;
-      final items = await _repo.getMedia(
-        category: _selectedCategory,
-        sortOption: _selectedSort,
-        page: nextPage,
-        pageSize: GalleryRepository.defaultPageSize,
-        filters: _activeFilters,
-        folderPathId: _selectedFolderId,
-      );
+      final chunk = await _loadVisibleMediaChunk(startPage: nextPage);
       if (!mounted) return;
-      final newItems = _filterQueued(items);
       setState(() {
-        _media = [..._media, ..._orderForSwipe(newItems)];
-        _currentMediaPage = nextPage;
-        _hasMoreMedia = items.length == GalleryRepository.defaultPageSize;
+        _media = [..._media, ...chunk.items];
+        _currentMediaPage = chunk.lastPage;
+        _hasMoreMedia = chunk.hasMore;
         _isLoadingNextPage = false;
       });
       unawaited(_warmDeckSizes());
@@ -422,9 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       final byId = {for (final m in resolved) m.id: m};
       setState(() {
-        _media = [
-          for (final item in _media) byId[item.id] ?? item,
-        ];
+        _media = [for (final item in _media) byId[item.id] ?? item];
       });
     } catch (_) {
       // ignore; size is non-critical UI affordance.
@@ -441,12 +445,95 @@ class _HomeScreenState extends State<HomeScreen> {
     return items.where((item) => !_keptIds.contains(item.id)).toList();
   }
 
+  Future<List<MediaItem>> _loadRecentPreview() async {
+    final collected = <MediaItem>[];
+    var page = 0;
+    const pageSize = 60;
+    while (collected.length < 15) {
+      final batch = await _repo.getMedia(
+        category: GalleryCategory.allMedia,
+        sortOption: SortOption.newestFirst,
+        page: page,
+        pageSize: pageSize,
+      );
+      if (batch.isEmpty) break;
+      collected.addAll(_filterKept(_filterQueued(batch)));
+      if (batch.length < pageSize) break;
+      page += 1;
+    }
+    final seen = <String>{};
+    return collected.where((item) => seen.add(item.id)).take(15).toList();
+  }
+
+  Future<({List<MediaItem> items, int lastPage, bool hasMore})>
+  _loadVisibleMediaChunk({
+    required int startPage,
+    int minVisibleItems = 24,
+  }) async {
+    final collected = <MediaItem>[];
+    var page = startPage;
+    var hasMore = false;
+    while (true) {
+      final batch = await _repo.getMedia(
+        category: _selectedCategory,
+        sortOption: _selectedSort,
+        page: page,
+        pageSize: GalleryRepository.defaultPageSize,
+        filters: _activeFilters,
+        folderPathId: _selectedFolderId,
+      );
+      if (batch.isEmpty) {
+        hasMore = false;
+        break;
+      }
+      collected.addAll(_orderForSwipe(_filterQueued(batch)));
+      hasMore = batch.length == GalleryRepository.defaultPageSize;
+      if (collected.length >= minVisibleItems || !hasMore) break;
+      page += 1;
+    }
+    return (items: collected, lastPage: page, hasMore: hasMore);
+  }
+
+  void _resetSwipeMonetizationSession() {
+    _committedSwipeCount = 0;
+    _nextSponsoredCardAt = _firstSponsoredCardAfter;
+    _showSponsoredCard = false;
+    _ignoreAdCountForNextSwipeItemId = null;
+  }
+
+  void _registerCommittedSwipeForAd(MediaItem item) {
+    if (_ignoreAdCountForNextSwipeItemId == item.id) {
+      _ignoreAdCountForNextSwipeItemId = null;
+      return;
+    }
+
+    _ignoreAdCountForNextSwipeItemId = null;
+    _committedSwipeCount += 1;
+    final canInsertSponsoredCard = _media.isNotEmpty;
+    if (!_showSponsoredCard &&
+        canInsertSponsoredCard &&
+        _committedSwipeCount >= _nextSponsoredCardAt) {
+      _showSponsoredCard = true;
+      _sponsoredCardSerial += 1;
+      _nextSponsoredCardAt += _sponsoredCardCooldown;
+    }
+  }
+
+  void _dismissSponsoredCard() {
+    if (!_showSponsoredCard) return;
+    setState(() => _showSponsoredCard = false);
+    if (_media.length <= 30) {
+      unawaited(_loadNextMediaPage());
+    }
+  }
+
   void _openSwipeForCategory(GalleryCategory category) {
     setState(() {
       _selectedCategory = category;
       _selectedFolderId = null;
       _selectedFolderName = null;
       _view = _AppView.swipe;
+      _resetSwipeMonetizationSession();
     });
     _loadMedia();
   }
@@ -457,6 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedFolderId = folder.id;
       _selectedFolderName = folder.name;
       _view = _AppView.swipe;
+      _resetSwipeMonetizationSession();
     });
     _loadMedia();
   }
@@ -486,6 +574,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _deleteQueue.add(item);
       _media.removeWhere((m) => m.id == item.id);
       _recent.removeWhere((m) => m.id == item.id);
+      if (_remainingDeckCount > 0) {
+        _remainingDeckCount -= 1;
+      }
+      _registerCommittedSwipeForAd(item);
       _actionHistory.add(
         SwipeActionRecord(item: item, action: SwipeAction.delete),
       );
@@ -518,6 +610,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final wasKept = _keptIds.contains(item.id);
       _keptIds.add(item.id);
       _media.removeWhere((m) => m.id == item.id);
+      if (_remainingDeckCount > 0) {
+        _remainingDeckCount -= 1;
+      }
+      _registerCommittedSwipeForAd(item);
       _actionHistory.add(
         SwipeActionRecord(
           item: item,
@@ -533,6 +629,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_actionHistory.isEmpty) return null;
     final record = _actionHistory.removeLast();
     setState(() {
+      _ignoreAdCountForNextSwipeItemId = record.item.id;
+      if (_remainingDeckCount < _deckTotalCount) {
+        _remainingDeckCount += 1;
+      }
       switch (record.action) {
         case SwipeAction.delete:
           _deleteQueue.removeWhere((q) => q.id == record.item.id);
@@ -618,7 +718,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final body = _buildActiveView(l10n);
-
     return PopScope(
       canPop: _view == _AppView.home,
       onPopInvokedWithResult: (didPop, result) {
@@ -643,6 +742,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActiveView(AppLocalizations l10n) {
+    if (_showStartupLoading) {
+      return AppStartupLoadingScreen(subtitle: l10n.startupLoadingHomeSubtitle);
+    }
+
     final permission = _permissionState;
     if (permission != null && !permission.isAuth && !permission.hasAccess) {
       return _PermissionDenied(onRetry: _bootstrap);
@@ -651,58 +754,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final isLimited =
         permission != null && !permission.isAuth && permission.hasAccess;
 
-    if (_view == _AppView.home) {
-      return Column(
-        children: [
-          if (isLimited)
-            _LimitedAccessBanner(
-              onSelectMore: _onSelectMorePhotos,
-            ),
-          Expanded(
-            child: _HomeView(
-              recent: _recent,
-              counts: _counts,
-              folders: _folders,
-              categoryBytes: _categoryBytes,
-              folderBytes: _folderBytes,
-              totalSavedBytes: _totalSavedBytes,
-              selectedSort: _selectedSort,
-              activeFilters: _activeFilters,
-              isLoading: _isLoading,
-              errorMessage: _errorMessage,
-              queueCount: _deleteQueue.length,
-              keptCount: _keptIds.length,
-              settingsKey: _settingsKey,
-              historyKey: _historyKey,
-              firstCategoryKey: _firstCategoryKey,
-              onSortChanged: (sort) {
-                setState(() => _selectedSort = sort);
-                _loadMedia();
-              },
-              onFiltersChanged: (filters) {
-                setState(() => _activeFilters = filters);
-                _loadMedia();
-              },
-              onOpenSettings: _openSettings,
-              onOpenHistory: _openHistory,
-              onOpenCategory: _openSwipeForCategory,
-              onOpenFolder: _openSwipeForFolder,
-              onOpenQueue: () => setState(() => _view = _AppView.queue),
-              onOpenKept: _openKeptList,
-            ),
-          ),
-        ],
-      );
-    }
-
     if (_view == _AppView.swipe) {
       return SwipeScreen(
         media: _media,
         category: _selectedCategory,
         isLoading: _isLoading,
         errorMessage: _errorMessage,
+        showSponsoredCard:
+            _showSponsoredCard &&
+            PicmeAdMobConfig.isPlacementEnabled(
+              PicmeAdPlacement.swipeSponsoredCard,
+            ),
+        sponsoredCardSerial: _sponsoredCardSerial,
+        totalDeckCount: _deckTotalCount,
+        remainingDeckCount: _remainingDeckCount,
         onSwipeLeft: _addToQueue,
         onSwipeRight: _keepItem,
+        onDismissSponsoredCard: _dismissSponsoredCard,
         onRevertLast: _revertLastSwipe,
         canRevert: _actionHistory.isNotEmpty,
         onRetry: _loadMedia,
@@ -716,11 +784,55 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return DeleteQueueScreen(
+    final homePane = Column(
+      children: [
+        if (isLimited) _LimitedAccessBanner(onSelectMore: _onSelectMorePhotos),
+        Expanded(
+          child: _HomeView(
+            recent: _recent,
+            counts: _counts,
+            folders: _folders,
+            categoryBytes: _categoryBytes,
+            folderBytes: _folderBytes,
+            totalSavedBytes: _totalSavedBytes,
+            selectedSort: _selectedSort,
+            activeFilters: _activeFilters,
+            isLoading: _isLoading,
+            errorMessage: _errorMessage,
+            queueCount: _deleteQueue.length,
+            keptCount: _keptIds.length,
+            settingsKey: _settingsKey,
+            historyKey: _historyKey,
+            firstCategoryKey: _firstCategoryKey,
+            onSortChanged: (sort) {
+              setState(() => _selectedSort = sort);
+              _loadMedia();
+            },
+            onFiltersChanged: (filters) {
+              setState(() => _activeFilters = filters);
+              _loadMedia();
+            },
+            onOpenSettings: _openSettings,
+            onOpenHistory: _openHistory,
+            onOpenCategory: _openSwipeForCategory,
+            onOpenFolder: _openSwipeForFolder,
+            onOpenQueue: () => setState(() => _view = _AppView.queue),
+            onOpenKept: _openKeptList,
+          ),
+        ),
+      ],
+    );
+
+    final queuePane = DeleteQueueScreen(
       queue: _deleteQueue,
       onRemove: _removeFromQueue,
       onConfirmDelete: _confirmDeleteQueue,
       onClose: () => setState(() => _view = _AppView.home),
+    );
+
+    return IndexedStack(
+      index: _view == _AppView.home ? 0 : 1,
+      children: [homePane, queuePane],
     );
   }
 
@@ -849,6 +961,7 @@ class _HomeView extends StatelessWidget {
   final List<({AssetPathEntity entity, int count})> folders;
   final Map<GalleryCategory, int> categoryBytes;
   final Map<String, int> folderBytes;
+
   /// Cumulative byte total of every successful delete batch so far.
   /// Drives the hero subtitle ("You've freed up 1.4 GB so far").
   final int totalSavedBytes;
@@ -873,14 +986,7 @@ class _HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final totalMedia = counts[GalleryCategory.allMedia] ?? 0;
-    // Show cumulative saved bytes as the hero subtitle once the user has
-    // actually deleted something, otherwise fall back to the static "what
-    // is this app" tagline. This also acts as a soft motivator: the longer
-    // you use Picme, the bigger the number gets.
-    final subtitleText = totalSavedBytes > 0
-        ? l10n.homeHeroSavings(formatBytes(totalSavedBytes))
-        : l10n.homeHeroSubtitle;
+    final subtitleText = l10n.homeHeroSubtitle;
 
     return ListView(
       physics: const ClampingScrollPhysics(),
@@ -896,17 +1002,22 @@ class _HomeView extends StatelessWidget {
         _HeroCard(
           title: l10n.homeHeroTitle,
           subtitle: subtitleText,
-          totalCount: totalMedia,
+          totalValue: formatBytes(totalSavedBytes),
           queuedCount: queueCount,
           keptCount: keptCount,
-          totalLabel: l10n.statsTotal,
+          totalLabel: l10n.historySavingsTitle,
           queuedLabel: l10n.statsQueued,
           keptLabel: l10n.statsKept,
           onTapTotal: onOpenHistory,
-          onTapSubtitle: totalSavedBytes > 0 ? onOpenHistory : null,
           onTapQueued: onOpenQueue,
           onTapKept: onOpenKept,
         ),
+        if (PicmeAdMobConfig.isPlacementEnabled(
+          PicmeAdPlacement.homeBanner,
+        )) ...[
+          const SizedBox(height: 14),
+          const _HomeBannerCard(),
+        ],
         const SizedBox(height: 22),
         Row(
           children: [
@@ -920,10 +1031,7 @@ class _HomeView extends StatelessWidget {
             _FilterChip(
               activeFilters: activeFilters,
               onTap: () async {
-                final updated = await showFiltersSheet(
-                  context,
-                  activeFilters,
-                );
+                final updated = await showFiltersSheet(context, activeFilters);
                 if (updated != null) onFiltersChanged(updated);
               },
             ),
@@ -980,6 +1088,35 @@ class _HomeView extends StatelessWidget {
   }
 }
 
+class _HomeBannerCard extends StatelessWidget {
+  const _HomeBannerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return PicmeBannerAdSlot(
+      placement: PicmeAdPlacement.homeBanner,
+      builder: (context, adWidget) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.76),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: adWidget,
+        );
+      },
+    );
+  }
+}
+
 class _HomeTopBar extends StatelessWidget {
   const _HomeTopBar({
     required this.settingsKey,
@@ -1024,11 +1161,7 @@ class _HomeTopBar extends StatelessWidget {
 }
 
 class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-  });
+  const _CircleIconButton({super.key, required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -1055,7 +1188,7 @@ class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.title,
     required this.subtitle,
-    required this.totalCount,
+    required this.totalValue,
     required this.queuedCount,
     required this.keptCount,
     required this.totalLabel,
@@ -1064,12 +1197,11 @@ class _HeroCard extends StatelessWidget {
     this.onTapTotal,
     this.onTapQueued,
     this.onTapKept,
-    this.onTapSubtitle,
   });
 
   final String title;
   final String subtitle;
-  final int totalCount;
+  final String totalValue;
   final int queuedCount;
   final int keptCount;
   final String totalLabel;
@@ -1078,7 +1210,6 @@ class _HeroCard extends StatelessWidget {
   final VoidCallback? onTapTotal;
   final VoidCallback? onTapQueued;
   final VoidCallback? onTapKept;
-  final VoidCallback? onTapSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1113,55 +1244,21 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          if (onTapSubtitle == null)
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.72),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 1.35,
-              ),
-            )
-          else
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onTapSubtitle,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.72),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            height: 1.35,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 16,
-                        color: Colors.white.withValues(alpha: 0.72),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
             ),
+          ),
           const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: _HeroStat(
-                  value: totalCount,
+                  value: totalValue,
                   label: totalLabel,
                   accent: Colors.white,
                   onTap: onTapTotal,
@@ -1174,7 +1271,7 @@ class _HeroCard extends StatelessWidget {
               ),
               Expanded(
                 child: _HeroStat(
-                  value: queuedCount,
+                  value: _formatCompactCount(queuedCount),
                   label: queuedLabel,
                   accent: const Color(0xFFE07A5F),
                   onTap: onTapQueued,
@@ -1187,7 +1284,7 @@ class _HeroCard extends StatelessWidget {
               ),
               Expanded(
                 child: _HeroStat(
-                  value: keptCount,
+                  value: _formatCompactCount(keptCount),
                   label: keptLabel,
                   accent: const Color(0xFFA3D9B1),
                   onTap: onTapKept,
@@ -1209,7 +1306,7 @@ class _HeroStat extends StatelessWidget {
     this.onTap,
   });
 
-  final int value;
+  final String value;
   final String label;
   final Color accent;
   final VoidCallback? onTap;
@@ -1219,7 +1316,7 @@ class _HeroStat extends StatelessWidget {
     final column = Column(
       children: [
         Text(
-          _formatCount(value),
+          value,
           style: TextStyle(
             color: accent,
             fontSize: 20,
@@ -1248,14 +1345,14 @@ class _HeroStat extends StatelessWidget {
       ),
     );
   }
+}
 
-  static String _formatCount(int n) {
-    if (n >= 1000) {
-      final k = n / 1000;
-      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
-    }
-    return n.toString();
+String _formatCompactCount(int n) {
+  if (n >= 1000) {
+    final k = n / 1000;
+    return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
   }
+  return n.toString();
 }
 
 class _SortSegments extends StatelessWidget {
@@ -1656,9 +1753,7 @@ class _BrowseTile extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                sizeLabel == null
-                    ? countLabel
-                    : '$countLabel · $sizeLabel',
+                sizeLabel == null ? countLabel : '$countLabel · $sizeLabel',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1682,7 +1777,6 @@ class _BrowseTile extends StatelessWidget {
     return n.toString();
   }
 }
-
 
 class _Palette {
   const _Palette(this.bg, this.fg);
@@ -1862,8 +1956,10 @@ class _NavItem extends StatelessWidget {
                         minWidth: 16,
                         minHeight: 16,
                       ),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE07A5F),
                         borderRadius: BorderRadius.circular(999),
@@ -1949,8 +2045,7 @@ class _LimitedAccessBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: onSelectMore,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               children: [
                 Container(

@@ -182,7 +182,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAbout =>
-      'Fast gallery cleanup. Queued and kept items are preserved when the app is closed.';
+      'Fast, local-first gallery cleanup. Queue, kept items, crash reporting, and ad-supported free access are all explained in Privacy Policy.';
 
   @override
   String get cancel => 'Cancel';
@@ -318,6 +318,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeSubtitle => 'Clean your gallery, fast';
 
   @override
+  String get startupLoadingTitle => 'Preparing Picme';
+
+  @override
+  String get startupLoadingSubtitle =>
+      'Warming up your cleanup flow before the first screen appears.';
+
+  @override
+  String get startupLoadingHomeSubtitle =>
+      'Restoring your gallery state and loading the first overview.';
+
+  @override
+  String get startupLoadingStepState =>
+      'Restoring queue, kept items, and preferences';
+
+  @override
+  String get startupLoadingStepGallery =>
+      'Checking gallery access and loading your media overview';
+
+  @override
+  String get startupLoadingStepExperience =>
+      'Warming up the swipe experience for a smoother start';
+
+  @override
   String get welcomeFeature1Title => 'Fully Local';
 
   @override
@@ -336,7 +359,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeFeature3Body =>
-      'No photo analysis, ad targeting, or third-party sharing.';
+      'Your media stays on-device. Picme may show ads and collect crash reports, but it does not upload your photos or videos.';
 
   @override
   String get welcomeContinueButton => 'Allow Gallery Access';
@@ -467,6 +490,102 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedbackSubtitle => 'Share your suggestions and issues';
+
+  @override
+  String get adsDisclosureTitle => 'Ads & sponsorships';
+
+  @override
+  String get adsDisclosureSubtitle =>
+      'Banner and sponsored cards help keep Picme free.';
+
+  @override
+  String get adsTestingTitle => 'Show ads (testing)';
+
+  @override
+  String get adsTestingSubtitle =>
+      'Turn this off temporarily for screenshots or manual QA.';
+
+  @override
+  String get admobTestDeviceTitle => 'AdMob test devices';
+
+  @override
+  String get admobTestDeviceSubtitleEmpty => 'No device IDs configured yet.';
+
+  @override
+  String admobTestDeviceSubtitleConfigured(int count) {
+    return '$count test device ID configured';
+  }
+
+  @override
+  String get admobTestDeviceDialogTitle => 'AdMob test device IDs';
+
+  @override
+  String get admobTestDeviceDialogBody =>
+      'Paste the test device hash from logcat here. Use one ID per line or separate with commas.';
+
+  @override
+  String get admobTestDeviceDialogHint => '33BE2250B43518CCDA7DE426D04EE231';
+
+  @override
+  String get admobTestDeviceRestartHint =>
+      'New banner requests should switch to test mode right after saving. If the current slot is already open, reopen the screen once.';
+
+  @override
+  String get admobTestDeviceSave => 'Save';
+
+  @override
+  String get admobTestDeviceSaved => 'Test device IDs saved';
+
+  @override
+  String get admobDebugBannerSourceTitle => 'Home banner source (debug)';
+
+  @override
+  String get admobDebugBannerSourceReal =>
+      'Using your real AdMob home banner unit.';
+
+  @override
+  String get admobDebugBannerSourceSample =>
+      'Using Google\'s sample banner unit for SDK/UI verification.';
+
+  @override
+  String get admobDebugSwipeSourceTitle => 'Swipe sponsored source (debug)';
+
+  @override
+  String get admobDebugSwipeSourceReal =>
+      'Using your real swipe sponsored ad unit when configured.';
+
+  @override
+  String get admobDebugSwipeSourceSample =>
+      'Using Google\'s sample banner unit inside the sponsored swipe card.';
+
+  @override
+  String get sponsoredCardBadge => 'AD';
+
+  @override
+  String get sponsoredCardTitle => 'Advertisement';
+
+  @override
+  String get sponsoredCardBody => 'Advertisement';
+
+  @override
+  String get sponsoredCardSwipeHint =>
+      'Sponsored card • swipe either way to continue';
+
+  @override
+  String get sponsoredCardLockedHint =>
+      'Sponsored card locked • wait for the timer';
+
+  @override
+  String get sponsoredCardLocked => 'LOCKED';
+
+  @override
+  String get sponsoredCardUnlocking => 'Unlocking in 4 seconds...';
+
+  @override
+  String get sponsoredCardUnlockReady => 'Unlocked • swipe to continue.';
+
+  @override
+  String get sponsoredCardContinue => 'CONTINUE';
 
   @override
   String homeHeroSavings(String amount) {

@@ -419,7 +419,7 @@ abstract class AppLocalizations {
   /// Settings screen about text
   ///
   /// In tr, this message translates to:
-  /// **'Hızlı galeri temizliği. Kuyruktaki ve tutulan öğeler uygulama kapansa da korunur.'**
+  /// **'Hızlı ve yerel öncelikli galeri temizliği. Kuyruk, tutulanlar, çökme raporları ve reklam destekli ücretsiz kullanım detayları Gizlilik Politikası\'nda açıklanır.'**
   String get settingsAbout;
 
   /// Cancel button label
@@ -656,6 +656,42 @@ abstract class AppLocalizations {
   /// **'Galerinizi hızlıca temizleyin'**
   String get welcomeSubtitle;
 
+  /// Startup loading screen title
+  ///
+  /// In tr, this message translates to:
+  /// **'Picme hazırlanıyor'**
+  String get startupLoadingTitle;
+
+  /// Startup loading screen subtitle while root gate initializes
+  ///
+  /// In tr, this message translates to:
+  /// **'İlk ekran açılmadan önce temizleme deneyimi hazırlanıyor.'**
+  String get startupLoadingSubtitle;
+
+  /// Startup loading subtitle while home bootstrap finishes
+  ///
+  /// In tr, this message translates to:
+  /// **'Galeri durumun geri yükleniyor ve ilk genel görünüm hazırlanıyor.'**
+  String get startupLoadingHomeSubtitle;
+
+  /// Startup loading step label
+  ///
+  /// In tr, this message translates to:
+  /// **'Kuyruk, tutulanlar ve tercihler geri yükleniyor'**
+  String get startupLoadingStepState;
+
+  /// Startup loading step label
+  ///
+  /// In tr, this message translates to:
+  /// **'Galeri erişimi kontrol ediliyor ve medya özeti hazırlanıyor'**
+  String get startupLoadingStepGallery;
+
+  /// Startup loading step label
+  ///
+  /// In tr, this message translates to:
+  /// **'Daha akıcı bir başlangıç için deneyim ısınıyor'**
+  String get startupLoadingStepExperience;
+
   /// Welcome feature 1 title
   ///
   /// In tr, this message translates to:
@@ -689,7 +725,7 @@ abstract class AppLocalizations {
   /// Welcome feature 3 body
   ///
   /// In tr, this message translates to:
-  /// **'Fotoğraf analizi, reklam hedefleme veya üçüncü taraf paylaşımı yoktur.'**
+  /// **'Medyan cihazında kalır. Picme reklam gösterebilir ve çökme raporları toplayabilir, ancak fotoğraf ve videolarını sunucuya yüklemez.'**
   String get welcomeFeature3Body;
 
   /// Welcome continue button
@@ -919,6 +955,174 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Öneri ve şikayetlerinizi iletin'**
   String get feedbackSubtitle;
+
+  /// Settings tile title for ads disclosure
+  ///
+  /// In tr, this message translates to:
+  /// **'Reklamlar ve sponsorlu içerik'**
+  String get adsDisclosureTitle;
+
+  /// Settings tile subtitle for ads disclosure
+  ///
+  /// In tr, this message translates to:
+  /// **'Banner ve sponsorlu kartlar Picme\'nin ücretsiz kalmasına yardımcı olur.'**
+  String get adsDisclosureSubtitle;
+
+  /// Temporary settings toggle title for showing ads during testing
+  ///
+  /// In tr, this message translates to:
+  /// **'Reklamları göster (test)'**
+  String get adsTestingTitle;
+
+  /// Temporary settings toggle subtitle for hiding ads
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran görüntüsü veya manuel test için bunu geçici olarak kapatabilirsin.'**
+  String get adsTestingSubtitle;
+
+  /// Settings tile title for AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'AdMob test cihazları'**
+  String get admobTestDeviceTitle;
+
+  /// Settings tile subtitle when no AdMob test device ids are configured
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz test cihazı kimliği eklenmedi.'**
+  String get admobTestDeviceSubtitleEmpty;
+
+  /// Settings tile subtitle when AdMob test device ids are configured
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} test cihazı kimliği tanımlı'**
+  String admobTestDeviceSubtitleConfigured(int count);
+
+  /// Bottom sheet title for AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'AdMob test cihazı kimlikleri'**
+  String get admobTestDeviceDialogTitle;
+
+  /// Bottom sheet body for AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'Logcat\'te görünen test cihazı hash\'ini buraya yapıştır. Her satıra bir ID yazabilir veya virgülle ayırabilirsin.'**
+  String get admobTestDeviceDialogBody;
+
+  /// Hint text for AdMob test device ids field
+  ///
+  /// In tr, this message translates to:
+  /// **'33BE2250B43518CCDA7DE426D04EE231'**
+  String get admobTestDeviceDialogHint;
+
+  /// Hint telling user to restart after saving AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaydettikten sonra yeni banner istekleri hemen test moduna gecmeli. Acik slot ayni kalirsa ekrani bir kez kapatip yeniden ac.'**
+  String get admobTestDeviceRestartHint;
+
+  /// Save button label for AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaydet'**
+  String get admobTestDeviceSave;
+
+  /// Snackbar after saving AdMob test device ids
+  ///
+  /// In tr, this message translates to:
+  /// **'Test cihazı kimlikleri kaydedildi'**
+  String get admobTestDeviceSaved;
+
+  /// Settings tile title for debug banner source switch
+  ///
+  /// In tr, this message translates to:
+  /// **'Ana banner kaynağı (debug)'**
+  String get admobDebugBannerSourceTitle;
+
+  /// Subtitle when real home banner unit is active
+  ///
+  /// In tr, this message translates to:
+  /// **'Kendi gerçek AdMob home banner birimin kullanılıyor.'**
+  String get admobDebugBannerSourceReal;
+
+  /// Subtitle when sample home banner unit is active
+  ///
+  /// In tr, this message translates to:
+  /// **'SDK/UI doğrulaması için Google sample banner birimi kullanılıyor.'**
+  String get admobDebugBannerSourceSample;
+
+  /// Settings tile title for swipe sponsored debug source switch
+  ///
+  /// In tr, this message translates to:
+  /// **'Swipe sponsorlu kaynak (debug)'**
+  String get admobDebugSwipeSourceTitle;
+
+  /// Subtitle when real swipe sponsored unit is active
+  ///
+  /// In tr, this message translates to:
+  /// **'Tanimliysa gercek swipe sponsorlu reklam birimin kullaniliyor.'**
+  String get admobDebugSwipeSourceReal;
+
+  /// Subtitle when sample swipe sponsored unit is active
+  ///
+  /// In tr, this message translates to:
+  /// **'Sponsorlu swipe kartinda Google sample banner birimi kullaniliyor.'**
+  String get admobDebugSwipeSourceSample;
+
+  /// Badge text on sponsored swipe card
+  ///
+  /// In tr, this message translates to:
+  /// **'REKLAM'**
+  String get sponsoredCardBadge;
+
+  /// Headline on sponsored swipe card
+  ///
+  /// In tr, this message translates to:
+  /// **'Reklam'**
+  String get sponsoredCardTitle;
+
+  /// Body text on sponsored swipe card
+  ///
+  /// In tr, this message translates to:
+  /// **'Reklam'**
+  String get sponsoredCardBody;
+
+  /// Hint shown behind sponsored swipe card
+  ///
+  /// In tr, this message translates to:
+  /// **'Sponsorlu kart • devam etmek için iki yöne de kaydır'**
+  String get sponsoredCardSwipeHint;
+
+  /// Hint shown while sponsored card is locked
+  ///
+  /// In tr, this message translates to:
+  /// **'Sponsorlu kart kilitli • sayaç bitene kadar bekle'**
+  String get sponsoredCardLockedHint;
+
+  /// Lock chip label shown on early swipe attempts
+  ///
+  /// In tr, this message translates to:
+  /// **'KİLİTLİ'**
+  String get sponsoredCardLocked;
+
+  /// Status text while sponsored card is locked
+  ///
+  /// In tr, this message translates to:
+  /// **'4 saniye içinde açılıyor...'**
+  String get sponsoredCardUnlocking;
+
+  /// Status text once sponsored card becomes swipeable
+  ///
+  /// In tr, this message translates to:
+  /// **'Kilit açıldı • devam etmek için kaydır.'**
+  String get sponsoredCardUnlockReady;
+
+  /// Center hint chip on sponsored swipe card
+  ///
+  /// In tr, this message translates to:
+  /// **'DEVAM'**
+  String get sponsoredCardContinue;
 
   /// Hero subtitle when user has saved storage
   ///

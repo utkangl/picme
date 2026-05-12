@@ -8,19 +8,27 @@ import 'package:picme/src/app/picme_app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppLocaleController.load();
-  // For the Play Store app we rely on the native Android Firebase config
-  // (`android/app/google-services.json`) instead of committing generated
-  // FlutterFire option files with client API keys into the repo.
-  await Firebase.initializeApp();
+  var firebaseReady = false;
+  try {
+    // We rely on native platform Firebase config files. If a platform isn't
+    // configured yet (currently iOS in this repo), the app should still boot.
+    await Firebase.initializeApp();
+    firebaseReady = true;
+  } catch (error) {
+    debugPrint('Firebase initialization skipped: $error');
+  }
 
-  // Forward Flutter framework errors to Crashlytics.
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  if (firebaseReady) {
+    // Forward Flutter framework errors to Crashlytics.
+    FlutterError.onError =
+        FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-  // Forward Dart async errors (e.g. isolate errors) to Crashlytics.
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // Forward Dart async errors (e.g. isolate errors) to Crashlytics.
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   runApp(const PicmeApp());
 }

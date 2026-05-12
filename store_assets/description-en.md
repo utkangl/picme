@@ -1,5 +1,5 @@
 # Short Description (80 chars max)
-Swipe to clean your gallery — delete, keep, queue. Fully local & privacy-first.
+Swipe to clean your gallery — delete, keep, queue. Local-first & ad-supported.
 
 # Long Description
 Picme is the fastest way to clear out photos and videos cluttering your phone.
@@ -18,6 +18,9 @@ Picme is the fastest way to clear out photos and videos cluttering your phone.
 ✓ Delete history log
 
 **Privacy first:**
-Picme never uploads any photo or video to a server. Gallery scanning is entirely on-device. Deletion only happens with your explicit confirmation.
+Picme never uploads any photo or video to its own servers. Gallery scanning is entirely on-device, and deletion only happens with your explicit confirmation.
+
+**Free, ad-supported version:**
+Picme may show banner ads and sponsored cards to support ongoing development.
 
 Make gallery cleanup feel like a game!

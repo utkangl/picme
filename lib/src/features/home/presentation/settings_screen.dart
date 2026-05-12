@@ -191,6 +191,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 _SettingsTile(
+                  icon: Icons.campaign_rounded,
+                  iconBg: const Color(0xFFFFF1E7),
+                  iconFg: const Color(0xFFE07A5F),
+                  title: l10n.adsDisclosureTitle,
+                  subtitle: l10n.adsDisclosureSubtitle,
+                  trailing: Icons.open_in_new_rounded,
+                  onTap: () => launchUrl(
+                    Uri.parse(privacyPolicyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                _SettingsDivider(),
+                _SettingsTile(
                   icon: Icons.privacy_tip_rounded,
                   iconBg: const Color(0xFFE5E5EA),
                   iconFg: const Color(0xFF1F1F1F),
@@ -248,9 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(title),
         content: Text(body),
         actions: [

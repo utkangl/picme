@@ -185,7 +185,7 @@
   "restartTourSubtitle": "Uygulama içi tanıtım turunu yeniden başlat",
   "@restartTourSubtitle": {"description": "Settings tile subtitle"},
 
-  "settingsAbout": "Hızlı galeri temizliği. Kuyruktaki ve tutulan öğeler uygulama kapansa da korunur.",
+  "settingsAbout": "Hızlı ve yerel öncelikli galeri temizliği. Kuyruk, tutulanlar, çökme raporları ve reklam destekli ücretsiz kullanım detayları Gizlilik Politikası'nda açıklanır.",
   "@settingsAbout": {"description": "Settings screen about text"},
 
   "cancel": "Vazgeç",
@@ -325,6 +325,24 @@
   "welcomeSubtitle": "Galerinizi hızlıca temizleyin",
   "@welcomeSubtitle": {"description": "Welcome screen subtitle"},
 
+  "startupLoadingTitle": "Picme hazırlanıyor",
+  "@startupLoadingTitle": {"description": "Startup loading screen title"},
+
+  "startupLoadingSubtitle": "İlk ekran açılmadan önce temizleme deneyimi hazırlanıyor.",
+  "@startupLoadingSubtitle": {"description": "Startup loading screen subtitle while root gate initializes"},
+
+  "startupLoadingHomeSubtitle": "Galeri durumun geri yükleniyor ve ilk genel görünüm hazırlanıyor.",
+  "@startupLoadingHomeSubtitle": {"description": "Startup loading subtitle while home bootstrap finishes"},
+
+  "startupLoadingStepState": "Kuyruk, tutulanlar ve tercihler geri yükleniyor",
+  "@startupLoadingStepState": {"description": "Startup loading step label"},
+
+  "startupLoadingStepGallery": "Galeri erişimi kontrol ediliyor ve medya özeti hazırlanıyor",
+  "@startupLoadingStepGallery": {"description": "Startup loading step label"},
+
+  "startupLoadingStepExperience": "Daha akıcı bir başlangıç için deneyim ısınıyor",
+  "@startupLoadingStepExperience": {"description": "Startup loading step label"},
+
   "welcomeFeature1Title": "Tamamen Yerel",
   "@welcomeFeature1Title": {"description": "Welcome feature 1 title"},
 
@@ -340,7 +358,7 @@
   "welcomeFeature3Title": "Gizlilik Önce Gelir",
   "@welcomeFeature3Title": {"description": "Welcome feature 3 title"},
 
-  "welcomeFeature3Body": "Fotoğraf analizi, reklam hedefleme veya üçüncü taraf paylaşımı yoktur.",
+  "welcomeFeature3Body": "Medyan cihazında kalır. Picme reklam gösterebilir ve çökme raporları toplayabilir, ancak fotoğraf ve videolarını sunucuya yüklemez.",
   "@welcomeFeature3Body": {"description": "Welcome feature 3 body"},
 
   "welcomeContinueButton": "Galerime İzin Ver",
@@ -494,6 +512,95 @@
 
   "feedbackSubtitle": "Öneri ve şikayetlerinizi iletin",
   "@feedbackSubtitle": {"description": "Settings tile: feedback subtitle"},
+
+  "adsDisclosureTitle": "Reklamlar ve sponsorlu içerik",
+  "@adsDisclosureTitle": {"description": "Settings tile title for ads disclosure"},
+
+  "adsDisclosureSubtitle": "Banner ve sponsorlu kartlar Picme'nin ücretsiz kalmasına yardımcı olur.",
+  "@adsDisclosureSubtitle": {"description": "Settings tile subtitle for ads disclosure"},
+
+  "adsTestingTitle": "Reklamları göster (test)",
+  "@adsTestingTitle": {"description": "Temporary settings toggle title for showing ads during testing"},
+
+  "adsTestingSubtitle": "Ekran görüntüsü veya manuel test için bunu geçici olarak kapatabilirsin.",
+  "@adsTestingSubtitle": {"description": "Temporary settings toggle subtitle for hiding ads"},
+
+  "admobTestDeviceTitle": "AdMob test cihazları",
+  "@admobTestDeviceTitle": {"description": "Settings tile title for AdMob test device ids"},
+
+  "admobTestDeviceSubtitleEmpty": "Henüz test cihazı kimliği eklenmedi.",
+  "@admobTestDeviceSubtitleEmpty": {"description": "Settings tile subtitle when no AdMob test device ids are configured"},
+
+  "admobTestDeviceSubtitleConfigured": "{count} test cihazı kimliği tanımlı",
+  "@admobTestDeviceSubtitleConfigured": {
+    "description": "Settings tile subtitle when AdMob test device ids are configured",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "admobTestDeviceDialogTitle": "AdMob test cihazı kimlikleri",
+  "@admobTestDeviceDialogTitle": {"description": "Bottom sheet title for AdMob test device ids"},
+
+  "admobTestDeviceDialogBody": "Logcat'te görünen test cihazı hash'ini buraya yapıştır. Her satıra bir ID yazabilir veya virgülle ayırabilirsin.",
+  "@admobTestDeviceDialogBody": {"description": "Bottom sheet body for AdMob test device ids"},
+
+  "admobTestDeviceDialogHint": "33BE2250B43518CCDA7DE426D04EE231",
+  "@admobTestDeviceDialogHint": {"description": "Hint text for AdMob test device ids field"},
+
+  "admobTestDeviceRestartHint": "Kaydettikten sonra yeni banner istekleri hemen test moduna gecmeli. Acik slot ayni kalirsa ekrani bir kez kapatip yeniden ac.",
+  "@admobTestDeviceRestartHint": {"description": "Hint telling user to restart after saving AdMob test device ids"},
+
+  "admobTestDeviceSave": "Kaydet",
+  "@admobTestDeviceSave": {"description": "Save button label for AdMob test device ids"},
+
+  "admobTestDeviceSaved": "Test cihazı kimlikleri kaydedildi",
+  "@admobTestDeviceSaved": {"description": "Snackbar after saving AdMob test device ids"},
+
+  "admobDebugBannerSourceTitle": "Ana banner kaynağı (debug)",
+  "@admobDebugBannerSourceTitle": {"description": "Settings tile title for debug banner source switch"},
+
+  "admobDebugBannerSourceReal": "Kendi gerçek AdMob home banner birimin kullanılıyor.",
+  "@admobDebugBannerSourceReal": {"description": "Subtitle when real home banner unit is active"},
+
+  "admobDebugBannerSourceSample": "SDK/UI doğrulaması için Google sample banner birimi kullanılıyor.",
+  "@admobDebugBannerSourceSample": {"description": "Subtitle when sample home banner unit is active"},
+
+  "admobDebugSwipeSourceTitle": "Swipe sponsorlu kaynak (debug)",
+  "@admobDebugSwipeSourceTitle": {"description": "Settings tile title for swipe sponsored debug source switch"},
+
+  "admobDebugSwipeSourceReal": "Tanimliysa gercek swipe sponsorlu reklam birimin kullaniliyor.",
+  "@admobDebugSwipeSourceReal": {"description": "Subtitle when real swipe sponsored unit is active"},
+
+  "admobDebugSwipeSourceSample": "Sponsorlu swipe kartinda Google sample banner birimi kullaniliyor.",
+  "@admobDebugSwipeSourceSample": {"description": "Subtitle when sample swipe sponsored unit is active"},
+
+  "sponsoredCardBadge": "REKLAM",
+  "@sponsoredCardBadge": {"description": "Badge text on sponsored swipe card"},
+
+  "sponsoredCardTitle": "Reklam",
+  "@sponsoredCardTitle": {"description": "Headline on sponsored swipe card"},
+
+  "sponsoredCardBody": "Reklam",
+  "@sponsoredCardBody": {"description": "Body text on sponsored swipe card"},
+
+  "sponsoredCardSwipeHint": "Sponsorlu kart • devam etmek için iki yöne de kaydır",
+  "@sponsoredCardSwipeHint": {"description": "Hint shown behind sponsored swipe card"},
+
+  "sponsoredCardLockedHint": "Sponsorlu kart kilitli • sayaç bitene kadar bekle",
+  "@sponsoredCardLockedHint": {"description": "Hint shown while sponsored card is locked"},
+
+  "sponsoredCardLocked": "KİLİTLİ",
+  "@sponsoredCardLocked": {"description": "Lock chip label shown on early swipe attempts"},
+
+  "sponsoredCardUnlocking": "4 saniye içinde açılıyor...",
+  "@sponsoredCardUnlocking": {"description": "Status text while sponsored card is locked"},
+
+  "sponsoredCardUnlockReady": "Kilit açıldı • devam etmek için kaydır.",
+  "@sponsoredCardUnlockReady": {"description": "Status text once sponsored card becomes swipeable"},
+
+  "sponsoredCardContinue": "DEVAM",
+  "@sponsoredCardContinue": {"description": "Center hint chip on sponsored swipe card"},
 
   "homeHeroSavings": "Şu ana kadar {amount} alan açtın",
   "@homeHeroSavings": {

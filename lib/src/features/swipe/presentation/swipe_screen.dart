@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:picme/src/core/ads/admob_config.dart';
+import 'package:picme/src/core/ads/picme_banner_ad_slot.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/l10n/app_localizations.dart';
@@ -20,8 +23,13 @@ class SwipeScreen extends StatefulWidget {
     required this.category,
     required this.isLoading,
     required this.errorMessage,
+    required this.showSponsoredCard,
+    required this.sponsoredCardSerial,
+    required this.totalDeckCount,
+    required this.remainingDeckCount,
     required this.onSwipeLeft,
     required this.onSwipeRight,
+    required this.onDismissSponsoredCard,
     required this.onRevertLast,
     required this.canRevert,
     required this.onRetry,
@@ -38,16 +46,23 @@ class SwipeScreen extends StatefulWidget {
   final GalleryCategory category;
   final bool isLoading;
   final String? errorMessage;
+  final bool showSponsoredCard;
+  final int sponsoredCardSerial;
+  final int totalDeckCount;
+  final int remainingDeckCount;
+
   /// True when the named folder for this category doesn't exist on the device
   /// (e.g. no "Screenshots" folder). Shows a specific empty state instead of
   /// the generic "all scanned" message.
   final bool categoryNotFound;
+
   /// Optional override for the title shown in the swipe header. When the user
   /// is browsing a dynamically-discovered folder (e.g. "WhatsApp Images") we
   /// pass the folder name here instead of falling back to the category label.
   final String? displayTitle;
   final ValueChanged<MediaItem> onSwipeLeft;
   final ValueChanged<MediaItem> onSwipeRight;
+  final VoidCallback onDismissSponsoredCard;
   final SwipeAction? Function() onRevertLast;
   final bool canRevert;
   final VoidCallback onRetry;
@@ -55,6 +70,7 @@ class SwipeScreen extends StatefulWidget {
   final VoidCallback onOpenQueue;
   final int queueCount;
   final String tourPrefsKey;
+
   /// Called when the swipe deck is near empty and more pages may be available.
   final VoidCallback? onLoadMore;
 
@@ -63,12 +79,16 @@ class SwipeScreen extends StatefulWidget {
 }
 
 class _SwipeScreenState extends State<SwipeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const double _swipeThresholdRatio = 0.18;
   static const double _velocityThreshold = 700;
+  static const Duration _sponsoredLockDuration = Duration(seconds: 4);
 
   Offset _dragOffset = Offset.zero;
   late final AnimationController _controller;
+  late final AnimationController _sponsoredLockController;
+  late final AnimationController _lockedShakeController;
+  late final Animation<double> _lockedShakeOffset;
   Animation<Offset>? _offsetAnimation;
   _SwipeAction? _pendingAction;
   bool _isAnimatingOut = false;
@@ -80,6 +100,7 @@ class _SwipeScreenState extends State<SwipeScreen>
   int _initialTotal = 0;
 
   bool _tourChecked = false;
+  bool _sponsoredExposureStarted = false;
   final GlobalKey _cardKey = GlobalKey(debugLabel: 'swipe-card');
   final GlobalKey _revertKey = GlobalKey(debugLabel: 'swipe-revert');
   final GlobalKey _queueKey = GlobalKey(debugLabel: 'swipe-queue');
@@ -110,14 +131,53 @@ class _SwipeScreenState extends State<SwipeScreen>
         }
       }
     });
+    _sponsoredLockController =
+        AnimationController(vsync: this, duration: _sponsoredLockDuration)
+          ..addListener(() {
+            if (mounted) setState(() {});
+          });
+    _lockedShakeController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 420),
+        )..addListener(() {
+          if (mounted) setState(() {});
+        });
+    _lockedShakeOffset =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0, end: -12), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -12, end: 12), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 12, end: -9), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -9, end: 9), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 9, end: -5), weight: 1.5),
+          TweenSequenceItem(tween: Tween(begin: -5, end: 0), weight: 1.5),
+        ]).animate(
+          CurvedAnimation(
+            parent: _lockedShakeController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+    _syncSponsoredLockState(forceRestart: widget.showSponsoredCard);
   }
 
   @override
   void dispose() {
     AppCoach.dismiss();
     _controller.dispose();
+    _sponsoredLockController.dispose();
+    _lockedShakeController.dispose();
     super.dispose();
   }
+
+  bool get _isSponsoredLocked =>
+      widget.showSponsoredCard &&
+      (!_sponsoredExposureStarted || _sponsoredLockController.value < 1.0);
+
+  double get _sponsoredLockProgress =>
+      _sponsoredLockController.value.clamp(0.0, 1.0);
+
+  double get _lockAttemptProgress =>
+      _lockedShakeController.value.clamp(0.0, 1.0);
 
   Future<void> _maybeStartTour() async {
     if (_tourChecked) return;
@@ -184,7 +244,12 @@ class _SwipeScreenState extends State<SwipeScreen>
       _isAnimatingOut = false;
       _isUndoEntering = false;
       _pendingUndoEnter = false;
+      _syncSponsoredLockState(forceRestart: widget.showSponsoredCard);
       return;
+    }
+    if (oldWidget.showSponsoredCard != widget.showSponsoredCard ||
+        oldWidget.sponsoredCardSerial != widget.sponsoredCardSerial) {
+      _syncSponsoredLockState(forceRestart: widget.showSponsoredCard);
     }
     if (oldWidget.media != widget.media) {
       // Yeni bir yükleme yapıldıysa total'ı tazeleyelim.
@@ -221,13 +286,56 @@ class _SwipeScreenState extends State<SwipeScreen>
       ..forward(from: 0);
   }
 
+  void _syncSponsoredLockState({required bool forceRestart}) {
+    _lockedShakeController.stop();
+    _lockedShakeController.reset();
+    if (!widget.showSponsoredCard) {
+      _sponsoredLockController.stop();
+      _sponsoredLockController.reset();
+      _sponsoredExposureStarted = false;
+      return;
+    }
+    if (!forceRestart && _sponsoredExposureStarted) return;
+    _sponsoredLockController
+      ..stop()
+      ..reset();
+    _sponsoredExposureStarted = false;
+  }
+
+  void _startSponsoredExposureTimer() {
+    if (!widget.showSponsoredCard || _sponsoredExposureStarted) return;
+    _sponsoredExposureStarted = true;
+    _sponsoredLockController
+      ..stop()
+      ..forward(from: 0);
+  }
+
+  Future<void> _triggerSponsoredLockFeedback() async {
+    HapticFeedback.mediumImpact();
+    _controller.stop();
+    setState(() {
+      _pendingAction = null;
+      _isAnimatingOut = false;
+      _dragOffset = Offset.zero;
+    });
+    await _lockedShakeController.forward(from: 0);
+    if (!mounted) return;
+    _lockedShakeController.reset();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final swipedCount = (_initialTotal - widget.media.length).clamp(
+    final totalProgressCount = widget.totalDeckCount > 0
+        ? widget.totalDeckCount
+        : widget.media.length;
+    final swipedCount = (totalProgressCount - widget.remainingDeckCount).clamp(
       0,
-      _initialTotal,
+      totalProgressCount,
     );
-    final progress = _initialTotal == 0 ? 0.0 : swipedCount / _initialTotal;
+    final progress = totalProgressCount == 0
+        ? 0.0
+        : swipedCount / totalProgressCount;
 
     return Stack(
       children: [
@@ -388,8 +496,11 @@ class _SwipeScreenState extends State<SwipeScreen>
       );
     }
 
+    final isSponsoredCard = widget.showSponsoredCard && widget.media.isNotEmpty;
     final current = widget.media.first;
-    final next = widget.media.length > 1 ? widget.media[1] : null;
+    final next = isSponsoredCard
+        ? current
+        : (widget.media.length > 1 ? widget.media[1] : null);
     _precacheUpcoming(context);
     if (!_tourChecked) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTour());
@@ -399,6 +510,7 @@ class _SwipeScreenState extends State<SwipeScreen>
         ? 0.0
         : (_dragOffset.dx.abs() / (width * 0.35)).clamp(0.0, 1.0);
     final cardOpacity = 1 - (dragProgress * 0.12);
+    final shakeDx = isSponsoredCard ? _lockedShakeOffset.value : 0.0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
@@ -406,10 +518,18 @@ class _SwipeScreenState extends State<SwipeScreen>
         clipBehavior: Clip.none,
         children: [
           Positioned.fill(
-            child: _SwipeHints(
-              dx: _isUndoEntering ? 0 : _dragOffset.dx,
-              width: width,
-            ),
+            child: isSponsoredCard
+                ? _SponsoredHints(
+                    dx: _isUndoEntering ? 0 : _dragOffset.dx,
+                    width: width,
+                    isLocked: _isSponsoredLocked,
+                    lockProgress: _sponsoredLockProgress,
+                    lockAttemptProgress: _lockAttemptProgress,
+                  )
+                : _SwipeHints(
+                    dx: _isUndoEntering ? 0 : _dragOffset.dx,
+                    width: width,
+                  ),
           ),
           if (next != null)
             Positioned.fill(
@@ -418,7 +538,7 @@ class _SwipeScreenState extends State<SwipeScreen>
           Positioned.fill(
             key: _cardKey,
             child: GestureDetector(
-              onTap: () => _openPreview(current),
+              onTap: isSponsoredCard ? null : () => _openPreview(current),
               onPanStart: (_) => _onPanStart(),
               onPanUpdate: (details) {
                 if (_isAnimatingOut) return;
@@ -434,19 +554,29 @@ class _SwipeScreenState extends State<SwipeScreen>
                   );
                 });
               },
-              onPanEnd: (details) => _onPanEnd(details, current, width),
+              onPanEnd: (details) =>
+                  _onPanEnd(details, width, isSponsoredCard: isSponsoredCard),
               child: Transform.translate(
-                offset: _dragOffset,
+                offset: Offset(_dragOffset.dx + shakeDx, _dragOffset.dy),
                 child: Transform.rotate(
                   angle: (_dragOffset.dx / width) * 0.175,
                   child: Opacity(
                     opacity: cardOpacity,
-                    child: _MediaCard(
-                      item: current,
-                      dragDx: _isUndoEntering ? 0 : _dragOffset.dx,
-                      width: width,
-                      autoplayVideo: true,
-                    ),
+                    child: isSponsoredCard
+                        ? _SponsoredCard(
+                            serial: widget.sponsoredCardSerial,
+                            dragDx: _isUndoEntering ? 0 : _dragOffset.dx,
+                            width: width,
+                            isLocked: _isSponsoredLocked,
+                            lockProgress: _sponsoredLockProgress,
+                            onAdReady: _startSponsoredExposureTimer,
+                          )
+                        : _MediaCard(
+                            item: current,
+                            dragDx: _isUndoEntering ? 0 : _dragOffset.dx,
+                            width: width,
+                            autoplayVideo: true,
+                          ),
                   ),
                 ),
               ),
@@ -485,19 +615,18 @@ class _SwipeScreenState extends State<SwipeScreen>
     _controller.stop();
     _pendingAction = null;
     _isAnimatingOut = false;
-    final current = widget.media.first;
-    if (action == _SwipeAction.delete) {
-      widget.onSwipeLeft(current);
-    } else {
-      widget.onSwipeRight(current);
-    }
+    _resolveSwipeAction(action);
     setState(() => _dragOffset = Offset.zero);
-    if (widget.media.length <= 30) {
+    if (!widget.showSponsoredCard && widget.media.length <= 30) {
       widget.onLoadMore?.call();
     }
   }
 
-  void _onPanEnd(DragEndDetails details, MediaItem current, double width) {
+  void _onPanEnd(
+    DragEndDetails details,
+    double width, {
+    required bool isSponsoredCard,
+  }) {
     if (_isAnimatingOut) return;
 
     final velocityX = details.velocity.pixelsPerSecond.dx;
@@ -507,14 +636,36 @@ class _SwipeScreenState extends State<SwipeScreen>
     final shouldSwipeLeft =
         _dragOffset.dx < -threshold || velocityX < -_velocityThreshold;
 
+    if (isSponsoredCard && _isSponsoredLocked) {
+      final attemptedSwipe =
+          shouldSwipeLeft ||
+          shouldSwipeRight ||
+          _dragOffset.dx.abs() > 22 ||
+          velocityX.abs() > 180;
+      if (attemptedSwipe) {
+        unawaited(_triggerSponsoredLockFeedback());
+      } else {
+        _animateBack();
+      }
+      return;
+    }
+
     if (shouldSwipeLeft) {
       HapticFeedback.lightImpact();
-      _animateOut(current, _SwipeAction.delete, width, velocityX);
+      _animateOut(
+        isSponsoredCard ? _SwipeAction.dismissSponsored : _SwipeAction.delete,
+        width,
+        velocityX,
+      );
       return;
     }
     if (shouldSwipeRight) {
       HapticFeedback.selectionClick();
-      _animateOut(current, _SwipeAction.keep, width, velocityX);
+      _animateOut(
+        isSponsoredCard ? _SwipeAction.dismissSponsored : _SwipeAction.keep,
+        width,
+        velocityX,
+      );
       return;
     }
     _animateBack();
@@ -535,15 +686,14 @@ class _SwipeScreenState extends State<SwipeScreen>
       ..forward(from: 0);
   }
 
-  void _animateOut(
-    MediaItem current,
-    _SwipeAction action,
-    double width,
-    double velocityX,
-  ) {
+  void _animateOut(_SwipeAction action, double width, double velocityX) {
     _pendingAction = action;
     _isAnimatingOut = true;
-    final sign = action == _SwipeAction.delete ? -1.0 : 1.0;
+    final sign = switch (action) {
+      _SwipeAction.delete => -1.0,
+      _SwipeAction.keep => 1.0,
+      _SwipeAction.dismissSponsored => _dragOffset.dx < 0 ? -1.0 : 1.0,
+    };
     final speedBoost = velocityX.abs().clamp(0, 1400) / 1400;
     final target = Offset(
       sign * (width * (1.25 + (speedBoost * 0.25))),
@@ -562,20 +712,29 @@ class _SwipeScreenState extends State<SwipeScreen>
   }
 
   void _completeSwipe(_SwipeAction action) {
-    if (widget.media.isEmpty) {
+    if (widget.media.isEmpty && action != _SwipeAction.dismissSponsored) {
       _resetTransform();
       return;
     }
+    _resolveSwipeAction(action);
+    _resetTransform();
+    // Trigger next-page load when 30 items remain.
+    if (action != _SwipeAction.dismissSponsored && widget.media.length <= 30) {
+      widget.onLoadMore?.call();
+    }
+  }
+
+  void _resolveSwipeAction(_SwipeAction action) {
+    if (action == _SwipeAction.dismissSponsored) {
+      widget.onDismissSponsoredCard();
+      return;
+    }
+    if (widget.media.isEmpty) return;
     final current = widget.media.first;
     if (action == _SwipeAction.delete) {
       widget.onSwipeLeft(current);
     } else {
       widget.onSwipeRight(current);
-    }
-    _resetTransform();
-    // Trigger next-page load when 30 items remain.
-    if (widget.media.length <= 30) {
-      widget.onLoadMore?.call();
     }
   }
 
@@ -610,7 +769,7 @@ class _SwipeScreenState extends State<SwipeScreen>
   }
 }
 
-enum _SwipeAction { keep, delete }
+enum _SwipeAction { keep, delete, dismissSponsored }
 
 class _SwipeCircleButton extends StatelessWidget {
   const _SwipeCircleButton({
@@ -641,9 +800,7 @@ class _SwipeCircleButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 20,
-            color: disabled
-                ? const Color(0xFFB0B0B0)
-                : const Color(0xFF1F1F1F),
+            color: disabled ? const Color(0xFFB0B0B0) : const Color(0xFF1F1F1F),
           ),
         ),
       ),
@@ -700,8 +857,10 @@ class _QueueFab extends StatelessWidget {
                       minWidth: 20,
                       minHeight: 20,
                     ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE07A5F),
                       borderRadius: BorderRadius.circular(999),
@@ -834,6 +993,257 @@ class _HintChip extends StatelessWidget {
   }
 }
 
+class _SponsoredHints extends StatelessWidget {
+  const _SponsoredHints({
+    required this.dx,
+    required this.width,
+    required this.isLocked,
+    required this.lockProgress,
+    required this.lockAttemptProgress,
+  });
+
+  final double dx;
+  final double width;
+  final bool isLocked;
+  final double lockProgress;
+  final double lockAttemptProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    final dismissOpacity = (dx.abs() / (width * 0.22)).clamp(0.0, 1.0);
+    final lockOpacity = (0.34 + (lockAttemptProgress * 0.66)).clamp(0.0, 1.0);
+    final l10n = AppLocalizations.of(context)!;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withValues(alpha: 0.45),
+      ),
+      child: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.black12),
+              ),
+              child: Text(
+                isLocked
+                    ? l10n.sponsoredCardLockedHint
+                    : l10n.sponsoredCardSwipeHint,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+          if (isLocked) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Opacity(
+                opacity: lockOpacity,
+                child: _HintChip(
+                  label: l10n.sponsoredCardLocked,
+                  color: const Color(0xFF1F1F1F),
+                  icon: Icons.lock_rounded,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Opacity(
+                opacity: lockOpacity,
+                child: _HintChip(
+                  label: l10n.sponsoredCardLocked,
+                  color: const Color(0xFF1F1F1F),
+                  icon: Icons.lock_rounded,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    value: lockProgress,
+                    backgroundColor: Colors.white.withValues(alpha: 0.5),
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFF1F1F1F)),
+                  ),
+                ),
+              ),
+            ),
+          ] else
+            Align(
+              alignment: Alignment.center,
+              child: Opacity(
+                opacity: dismissOpacity,
+                child: _HintChip(
+                  label: l10n.sponsoredCardContinue,
+                  color: const Color(0xFF1F1F1F),
+                  icon: Icons.swipe_rounded,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SponsoredCard extends StatelessWidget {
+  const _SponsoredCard({
+    required this.serial,
+    required this.isLocked,
+    required this.lockProgress,
+    required this.onAdReady,
+    this.dragDx = 0,
+    this.width = 1,
+  });
+
+  final int serial;
+  final bool isLocked;
+  final double lockProgress;
+  final VoidCallback onAdReady;
+  final double dragDx;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final intentProgress = (dragDx.abs() / (width * 0.22)).clamp(0.0, 1.0);
+    final statusText = isLocked
+        ? l10n.sponsoredCardUnlocking
+        : l10n.sponsoredCardUnlockReady;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F2F0),
+          border: Border.all(color: const Color(0x14000000)),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (intentProgress > 0)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(
+                    0xFF1F1F1F,
+                  ).withValues(alpha: 0.04 + (intentProgress * 0.08)),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          l10n.sponsoredCardBadge,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.7,
+                            color: Color(0xFF1F1F1F),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        l10n.sponsoredCardTitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(
+                            0xFF1F1F1F,
+                          ).withValues(alpha: 0.68),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: lockProgress,
+                      backgroundColor: const Color(0x14000000),
+                      valueColor: const AlwaysStoppedAnimation(
+                        Color(0xFF1F1F1F),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  PicmeBannerAdSlot(
+                    key: ValueKey('sponsored-card-ad-$serial'),
+                    placement: PicmeAdPlacement.swipeSponsoredCard,
+                    onAdLoaded: onAdReady,
+                    onAdFailedToLoad: onAdReady,
+                    builder: (context, adWidget) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.08),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: adWidget,
+                      );
+                    },
+                  ),
+                  const Spacer(),
+                  Center(
+                    child: Text(
+                      statusText,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                        color: const Color(0xFF1F1F1F).withValues(alpha: 0.62),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MediaCard extends StatelessWidget {
   const _MediaCard({
     required this.item,
@@ -845,6 +1255,7 @@ class _MediaCard extends StatelessWidget {
   final MediaItem item;
   final double dragDx;
   final double width;
+
   /// When `true` and [item] is a video, the card embeds an inline
   /// [VideoPlayer] that plays muted in a loop. We only enable this for the
   /// top card so the under-card (preload) doesn't burn battery decoding two
@@ -1019,9 +1430,8 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
       ),
       fit: BoxFit.cover,
       gaplessPlayback: true,
-      errorBuilder: (_, _, _) => const Center(
-        child: Icon(Icons.videocam_off_rounded, size: 64),
-      ),
+      errorBuilder: (_, _, _) =>
+          const Center(child: Icon(Icons.videocam_off_rounded, size: 64)),
     );
 
     if (_failed || controller == null || !_ready) {
@@ -1260,3 +1670,7 @@ class _CategoryNotFoundState extends StatelessWidget {
     );
   }
 }
+
+
+
+

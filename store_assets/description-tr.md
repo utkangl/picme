@@ -1,5 +1,5 @@
 # Kısa Açıklama (80 karakter max)
-Swipe ile galeri temizliği — sil, tut, kuyruğa al. Tamamen yerel, gizliliğe saygılı.
+Swipe ile galeri temizliği — sil, tut, kuyruğa al. Yerel öncelikli ve reklam destekli.
 
 # Uzun Açıklama
 Picme, telefonunuzdaki fotoğraf ve videoları hızla temizlemenin en kolay yoludur.
@@ -18,6 +18,9 @@ Picme, telefonunuzdaki fotoğraf ve videoları hızla temizlemenin en kolay yolu
 ✓ Silme geçmişi
 
 **Gizlilik önce gelir:**
-Picme hiçbir fotoğraf veya videoyu sunucuya yüklemiyor. Galeri taraması tamamen cihazında gerçekleşiyor. Silme ancak senin onayınla gerçekleşir.
+Picme hiçbir fotoğraf veya videoyu kendi sunucularına yüklemiyor. Galeri taraması tamamen cihazında gerçekleşiyor. Silme ancak senin onayınla gerçekleşir.
+
+**Ücretsiz ve reklam destekli sürüm:**
+Picme, geliştirmeyi desteklemek için banner reklamlar ve sponsorlu kartlar gösterebilir.
 
 Galeri temizliğini oyun gibi eğlenceli hale getir!

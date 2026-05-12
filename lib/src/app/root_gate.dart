@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:picme/src/core/ui/app_startup_loading_screen.dart';
 import 'package:picme/src/features/home/presentation/home_screen.dart';
 import 'package:picme/src/features/onboarding/presentation/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,9 +57,7 @@ class _RootGateState extends State<RootGate> {
   Widget build(BuildContext context) {
     switch (_state) {
       case _GateState.loading:
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        return const AppStartupLoadingScreen();
       case _GateState.welcome:
         return WelcomeScreen(onPermissionResult: _onPermissionResult);
       case _GateState.home:

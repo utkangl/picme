@@ -13,10 +13,21 @@ plugins {
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
+val admobProperties = Properties()
+val admobPropertiesFile = rootProject.file("admob.properties")
+val hasAdmobProperties = admobPropertiesFile.exists()
 
 if (hasReleaseKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+
+if (hasAdmobProperties) {
+    admobProperties.load(FileInputStream(admobPropertiesFile))
+}
+
+val admobAndroidAppId =
+    (admobProperties.getProperty("ADMOB_ANDROID_APP_ID")
+        ?: "ca-app-pub-3940256099942544~3347511713").trim()
 
 val isReleaseTask = gradle.startParameter.taskNames.any {
     it.contains("release", ignoreCase = true)
@@ -57,6 +68,8 @@ android {
             // by Flutter's post-build verification of release app bundles.
             debugSymbolLevel = "SYMBOL_TABLE"
         }
+
+        manifestPlaceholders["admobAppId"] = admobAndroidAppId
     }
 
     signingConfigs {

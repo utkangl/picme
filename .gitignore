@@ -47,5 +47,6 @@ app.*.map.json
 
 # Android signing files
 /android/key.properties
+/android/admob.properties
 *.jks
 *.keystore

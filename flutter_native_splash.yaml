@@ -3,13 +3,14 @@ flutter_native_splash:
   color: "#F7F2F2"
 
   # Image displayed in the center of the splash screen
-  image: assets/icon/app_icon.png
+  image: assets/icon/splash_icon_padded.png
 
   android: true
-  ios: false
+  ios: true
+  ios_content_mode: scaleAspectFit
 
   # Android 12+ themed splash
   android_12:
     color: "#F7F2F2"
-    image: assets/icon/app_icon.png
+    image: assets/icon/splash_icon_padded.png
     icon_background_color: "#F7F2F2"

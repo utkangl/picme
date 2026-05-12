@@ -183,7 +183,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsAbout =>
-      'Hızlı galeri temizliği. Kuyruktaki ve tutulan öğeler uygulama kapansa da korunur.';
+      'Hızlı ve yerel öncelikli galeri temizliği. Kuyruk, tutulanlar, çökme raporları ve reklam destekli ücretsiz kullanım detayları Gizlilik Politikası\'nda açıklanır.';
 
   @override
   String get cancel => 'Vazgeç';
@@ -319,6 +319,29 @@ class AppLocalizationsTr extends AppLocalizations {
   String get welcomeSubtitle => 'Galerinizi hızlıca temizleyin';
 
   @override
+  String get startupLoadingTitle => 'Picme hazırlanıyor';
+
+  @override
+  String get startupLoadingSubtitle =>
+      'İlk ekran açılmadan önce temizleme deneyimi hazırlanıyor.';
+
+  @override
+  String get startupLoadingHomeSubtitle =>
+      'Galeri durumun geri yükleniyor ve ilk genel görünüm hazırlanıyor.';
+
+  @override
+  String get startupLoadingStepState =>
+      'Kuyruk, tutulanlar ve tercihler geri yükleniyor';
+
+  @override
+  String get startupLoadingStepGallery =>
+      'Galeri erişimi kontrol ediliyor ve medya özeti hazırlanıyor';
+
+  @override
+  String get startupLoadingStepExperience =>
+      'Daha akıcı bir başlangıç için deneyim ısınıyor';
+
+  @override
   String get welcomeFeature1Title => 'Tamamen Yerel';
 
   @override
@@ -337,7 +360,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get welcomeFeature3Body =>
-      'Fotoğraf analizi, reklam hedefleme veya üçüncü taraf paylaşımı yoktur.';
+      'Medyan cihazında kalır. Picme reklam gösterebilir ve çökme raporları toplayabilir, ancak fotoğraf ve videolarını sunucuya yüklemez.';
 
   @override
   String get welcomeContinueButton => 'Galerime İzin Ver';
@@ -469,6 +492,104 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get feedbackSubtitle => 'Öneri ve şikayetlerinizi iletin';
+
+  @override
+  String get adsDisclosureTitle => 'Reklamlar ve sponsorlu içerik';
+
+  @override
+  String get adsDisclosureSubtitle =>
+      'Banner ve sponsorlu kartlar Picme\'nin ücretsiz kalmasına yardımcı olur.';
+
+  @override
+  String get adsTestingTitle => 'Reklamları göster (test)';
+
+  @override
+  String get adsTestingSubtitle =>
+      'Ekran görüntüsü veya manuel test için bunu geçici olarak kapatabilirsin.';
+
+  @override
+  String get admobTestDeviceTitle => 'AdMob test cihazları';
+
+  @override
+  String get admobTestDeviceSubtitleEmpty =>
+      'Henüz test cihazı kimliği eklenmedi.';
+
+  @override
+  String admobTestDeviceSubtitleConfigured(int count) {
+    return '$count test cihazı kimliği tanımlı';
+  }
+
+  @override
+  String get admobTestDeviceDialogTitle => 'AdMob test cihazı kimlikleri';
+
+  @override
+  String get admobTestDeviceDialogBody =>
+      'Logcat\'te görünen test cihazı hash\'ini buraya yapıştır. Her satıra bir ID yazabilir veya virgülle ayırabilirsin.';
+
+  @override
+  String get admobTestDeviceDialogHint => '33BE2250B43518CCDA7DE426D04EE231';
+
+  @override
+  String get admobTestDeviceRestartHint =>
+      'Kaydettikten sonra yeni banner istekleri hemen test moduna gecmeli. Acik slot ayni kalirsa ekrani bir kez kapatip yeniden ac.';
+
+  @override
+  String get admobTestDeviceSave => 'Kaydet';
+
+  @override
+  String get admobTestDeviceSaved => 'Test cihazı kimlikleri kaydedildi';
+
+  @override
+  String get admobDebugBannerSourceTitle => 'Ana banner kaynağı (debug)';
+
+  @override
+  String get admobDebugBannerSourceReal =>
+      'Kendi gerçek AdMob home banner birimin kullanılıyor.';
+
+  @override
+  String get admobDebugBannerSourceSample =>
+      'SDK/UI doğrulaması için Google sample banner birimi kullanılıyor.';
+
+  @override
+  String get admobDebugSwipeSourceTitle => 'Swipe sponsorlu kaynak (debug)';
+
+  @override
+  String get admobDebugSwipeSourceReal =>
+      'Tanimliysa gercek swipe sponsorlu reklam birimin kullaniliyor.';
+
+  @override
+  String get admobDebugSwipeSourceSample =>
+      'Sponsorlu swipe kartinda Google sample banner birimi kullaniliyor.';
+
+  @override
+  String get sponsoredCardBadge => 'REKLAM';
+
+  @override
+  String get sponsoredCardTitle => 'Reklam';
+
+  @override
+  String get sponsoredCardBody => 'Reklam';
+
+  @override
+  String get sponsoredCardSwipeHint =>
+      'Sponsorlu kart • devam etmek için iki yöne de kaydır';
+
+  @override
+  String get sponsoredCardLockedHint =>
+      'Sponsorlu kart kilitli • sayaç bitene kadar bekle';
+
+  @override
+  String get sponsoredCardLocked => 'KİLİTLİ';
+
+  @override
+  String get sponsoredCardUnlocking => '4 saniye içinde açılıyor...';
+
+  @override
+  String get sponsoredCardUnlockReady =>
+      'Kilit açıldı • devam etmek için kaydır.';
+
+  @override
+  String get sponsoredCardContinue => 'DEVAM';
 
   @override
   String homeHeroSavings(String amount) {

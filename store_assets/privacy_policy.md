@@ -1,63 +1,39 @@
-# Picme – Gizlilik Politikası / Privacy Policy
+# Picme – Privacy Summary
 
-**Son güncelleme / Last updated: 2026-05-09**
+**Last updated: 2026-05-11**
 
----
+Picme scans your gallery on-device. Your photos and videos are **not uploaded to Picme's own servers** for cleanup, review, or deletion decisions.
 
-## Türkçe
+## What Picme stores locally
 
-### Topladığımız Veriler
+- queued-for-delete items
+- kept items
+- delete history summaries and storage savings
+- tutorial and language preferences
+- some media size cache values used for faster UI
 
-Picme, cihazınızdaki galeriyi yerel olarak tarar. **Hiçbir fotoğraf, video veya kişisel bilgi sunucularımıza gönderilmez.**
-
-Uygulama yalnızca şunları yapar:
-- Galerinizdeki medya dosyalarını **yalnızca cihazınızda** listeler ve görüntüler.
-- Silme kuyruğunu ve tutulan öğeleri **yalnızca cihazınızda** yerel depolamaya kaydeder.
-
-### Firebase Crashlytics
-
-Uygulama kararlılığını iyileştirmek için **Firebase Crashlytics** kullanıyoruz. Bu servis şunları toplar:
-
-- Cihaz modeli ve işletim sistemi sürümü (örn. Android 14)
-- Uygulama sürümü
-- Hata stack trace'i
-
-Bu veriler **kimliğe bağlı değildir** ve fotoğraflarınızı, konumunuzu veya kişisel bilgilerinizi içermez.
-
-### Üçüncü Taraf Paylaşımı
-
-Verilerinizi hiçbir üçüncü tarafla pazarlama veya reklam amacıyla **paylaşmıyoruz**.
-
-### İletişim
-
-Sorularınız için: **picmeapp@iletisim.com** *(gerçek adresinizi buraya yazın)*
-
----
-
-## English
-
-### Data We Collect
-
-Picme scans your device gallery locally. **No photos, videos, or personal data are sent to our servers.**
-
-The app only:
-- Lists and displays your media files **on-device only**.
-- Saves the delete queue and kept items to **local storage on your device only**.
+## Third-party services
 
 ### Firebase Crashlytics
 
-We use **Firebase Crashlytics** to improve app stability. This service collects:
+Picme uses Firebase Crashlytics to improve stability. Crashlytics may process:
 
-- Device model and OS version (e.g. Android 14)
-- App version
-- Error stack traces
+- app version
+- device model and OS version
+- error logs and stack traces
 
-This data is **not linked to your identity** and does not include your photos, location, or any personal information.
+Crash reports do **not** include your photos or videos.
 
-### Third-Party Sharing
+### Google AdMob
 
-We do **not** share your data with any third party for marketing or advertising purposes.
+Picme's free version may show banner ads and sponsored cards through Google AdMob. Google may process device identifiers, IP address, app/device information, approximate location signals, and ad interaction data according to Google's own policies.
 
-### Contact
+Picme does **not** upload your media to its own servers for ad targeting.
 
-For questions: **picmeapp@contact.com** *(replace with your real address)*
+## Control
+
+You can revoke gallery access from system settings at any time. You can also clear queued and kept state inside the app.
+
+## Contact
+
+For privacy questions: **utkangul994@gmail.com**
