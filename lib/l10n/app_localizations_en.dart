@@ -579,7 +579,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sponsoredCardLocked => 'LOCKED';
 
   @override
-  String get sponsoredCardUnlocking => 'Unlocking in 4 seconds...';
+  String sponsoredCardUnlockingCountdown(int seconds) {
+    return 'Unlocking in $seconds seconds...';
+  }
 
   @override
   String get sponsoredCardUnlockReady => 'Unlocked • swipe to continue.';

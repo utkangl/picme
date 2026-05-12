@@ -582,7 +582,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get sponsoredCardLocked => 'KİLİTLİ';
 
   @override
-  String get sponsoredCardUnlocking => '4 saniye içinde açılıyor...';
+  String sponsoredCardUnlockingCountdown(int seconds) {
+    return '$seconds saniye içinde açılıyor...';
+  }
 
   @override
   String get sponsoredCardUnlockReady =>

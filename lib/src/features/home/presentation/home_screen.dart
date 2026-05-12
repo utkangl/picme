@@ -718,9 +718,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final body = _buildActiveView(l10n);
+    final backLockedBySponsoredCard =
+        _view == _AppView.swipe && _showSponsoredCard;
     return PopScope(
       canPop: _view == _AppView.home,
       onPopInvokedWithResult: (didPop, result) {
+        if (backLockedBySponsoredCard) {
+          return;
+        }
         if (!didPop && _view != _AppView.home) {
           setState(() => _view = _AppView.home);
         }

@@ -1109,8 +1109,8 @@ abstract class AppLocalizations {
   /// Status text while sponsored card is locked
   ///
   /// In tr, this message translates to:
-  /// **'4 saniye içinde açılıyor...'**
-  String get sponsoredCardUnlocking;
+  /// **'{seconds} saniye içinde açılıyor...'**
+  String sponsoredCardUnlockingCountdown(int seconds);
 
   /// Status text once sponsored card becomes swipeable
   ///

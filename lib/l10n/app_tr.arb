@@ -593,8 +593,13 @@
   "sponsoredCardLocked": "KİLİTLİ",
   "@sponsoredCardLocked": {"description": "Lock chip label shown on early swipe attempts"},
 
-  "sponsoredCardUnlocking": "4 saniye içinde açılıyor...",
-  "@sponsoredCardUnlocking": {"description": "Status text while sponsored card is locked"},
+  "sponsoredCardUnlockingCountdown": "{seconds} saniye içinde açılıyor...",
+  "@sponsoredCardUnlockingCountdown": {
+    "description": "Status text while sponsored card is locked",
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
 
   "sponsoredCardUnlockReady": "Kilit açıldı • devam etmek için kaydır.",
   "@sponsoredCardUnlockReady": {"description": "Status text once sponsored card becomes swipeable"},

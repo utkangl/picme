@@ -267,7 +267,12 @@
   "sponsoredCardSwipeHint": "Sponsored card • swipe either way to continue",
   "sponsoredCardLockedHint": "Sponsored card locked • wait for the timer",
   "sponsoredCardLocked": "LOCKED",
-  "sponsoredCardUnlocking": "Unlocking in 4 seconds...",
+  "sponsoredCardUnlockingCountdown": "Unlocking in {seconds} seconds...",
+  "@sponsoredCardUnlockingCountdown": {
+    "placeholders": {
+      "seconds": {"type": "int"}
+    }
+  },
   "sponsoredCardUnlockReady": "Unlocked • swipe to continue.",
   "sponsoredCardContinue": "CONTINUE",
 

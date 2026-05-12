@@ -82,7 +82,7 @@ class _SwipeScreenState extends State<SwipeScreen>
     with TickerProviderStateMixin {
   static const double _swipeThresholdRatio = 0.18;
   static const double _velocityThreshold = 700;
-  static const Duration _sponsoredLockDuration = Duration(seconds: 4);
+  static const Duration _sponsoredLockDuration = Duration(seconds: 10);
 
   Offset _dragOffset = Offset.zero;
   late final AnimationController _controller;
@@ -178,6 +178,17 @@ class _SwipeScreenState extends State<SwipeScreen>
 
   double get _lockAttemptProgress =>
       _lockedShakeController.value.clamp(0.0, 1.0);
+
+  int get _sponsoredLockRemainingSeconds {
+    if (!_isSponsoredLocked) return 0;
+    final remainingFraction = (1 - _sponsoredLockController.value).clamp(
+      0.0,
+      1.0,
+    );
+    final seconds = (remainingFraction * _sponsoredLockDuration.inSeconds)
+        .ceil();
+    return seconds.clamp(1, _sponsoredLockDuration.inSeconds);
+  }
 
   Future<void> _maybeStartTour() async {
     if (_tourChecked) return;
@@ -336,77 +347,83 @@ class _SwipeScreenState extends State<SwipeScreen>
     final progress = totalProgressCount == 0
         ? 0.0
         : swipedCount / totalProgressCount;
+    final controlsLocked = widget.showSponsoredCard;
 
-    return Stack(
-      children: [
-        Column(
-          children: [
-            // Slim animated progress bar at the very top.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  height: 3,
-                  color: Colors.white.withValues(alpha: 0.5),
-                  child: FractionallySizedBox(
-                    widthFactor: progress.clamp(0.0, 1.0),
-                    alignment: Alignment.centerLeft,
-                    child: const ColoredBox(color: Color(0xFF1F1F1F)),
+    return PopScope(
+      canPop: !controlsLocked,
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              // Slim animated progress bar at the very top.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    height: 3,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    child: FractionallySizedBox(
+                      widthFactor: progress.clamp(0.0, 1.0),
+                      alignment: Alignment.centerLeft,
+                      child: const ColoredBox(color: Color(0xFF1F1F1F)),
+                    ),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
-              child: Row(
-                children: [
-                  _SwipeCircleButton(
-                    icon: Icons.arrow_back_rounded,
-                    onTap: widget.onBack,
-                  ),
-                  Expanded(
-                    child: Text(
-                      widget.displayTitle ??
-                          widget.category.labelOf(
-                            AppLocalizations.of(context)!,
-                          ),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        color: Color(0xFF1F1F1F),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+                child: Row(
+                  children: [
+                    _SwipeCircleButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: controlsLocked ? null : widget.onBack,
+                    ),
+                    Expanded(
+                      child: Text(
+                        widget.displayTitle ??
+                            widget.category.labelOf(
+                              AppLocalizations.of(context)!,
+                            ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          color: Color(0xFF1F1F1F),
+                        ),
                       ),
                     ),
-                  ),
-                  _SwipeCircleButton(
-                    key: _revertKey,
-                    icon: Icons.undo_rounded,
-                    onTap: widget.canRevert ? _onRevertPressed : null,
-                    tooltip: AppLocalizations.of(context)!.undoButton,
-                  ),
-                ],
+                    _SwipeCircleButton(
+                      key: _revertKey,
+                      icon: Icons.undo_rounded,
+                      onTap: !controlsLocked && widget.canRevert
+                          ? _onRevertPressed
+                          : null,
+                      tooltip: AppLocalizations.of(context)!.undoButton,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-        Positioned(
-          right: 20,
-          bottom: 30,
-          child: _QueueFab(
-            key: _queueKey,
-            count: widget.queueCount,
-            onTap: widget.onOpenQueue,
+              Expanded(child: _buildBody()),
+            ],
           ),
-        ),
-      ],
+          Positioned(
+            right: 20,
+            bottom: 30,
+            child: _QueueFab(
+              key: _queueKey,
+              count: widget.queueCount,
+              onTap: controlsLocked ? null : widget.onOpenQueue,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _onRevertPressed() {
-    if (!widget.canRevert) return;
+    if (!widget.canRevert || widget.showSponsoredCard) return;
     HapticFeedback.selectionClick();
     final revertedAction = widget.onRevertLast();
     if (revertedAction == null) return;
@@ -479,7 +496,7 @@ class _SwipeScreenState extends State<SwipeScreen>
               ),
             ),
             const SizedBox(height: 12),
-            if (widget.canRevert)
+            if (widget.canRevert && !widget.showSponsoredCard)
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF1F1F1F),
@@ -569,6 +586,7 @@ class _SwipeScreenState extends State<SwipeScreen>
                             width: width,
                             isLocked: _isSponsoredLocked,
                             lockProgress: _sponsoredLockProgress,
+                            remainingSeconds: _sponsoredLockRemainingSeconds,
                             onAdReady: _startSponsoredExposureTimer,
                           )
                         : _MediaCard(
@@ -814,12 +832,15 @@ class _QueueFab extends StatelessWidget {
   const _QueueFab({super.key, required this.count, required this.onTap});
 
   final int count;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return Material(
-      color: const Color(0xFF1F1F1F),
+      color: disabled
+          ? const Color(0xFF1F1F1F).withValues(alpha: 0.35)
+          : const Color(0xFF1F1F1F),
       shape: const CircleBorder(),
       elevation: 0,
       child: InkWell(
@@ -993,6 +1014,105 @@ class _HintChip extends StatelessWidget {
   }
 }
 
+class _SponsoredReadyBanner extends StatefulWidget {
+  const _SponsoredReadyBanner({this.compact = false});
+
+  final bool compact;
+
+  @override
+  State<_SponsoredReadyBanner> createState() => _SponsoredReadyBannerState();
+}
+
+class _SponsoredReadyBannerState extends State<_SponsoredReadyBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = widget.compact;
+    final child = AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        final iconScale = 0.96 + (t * 0.12);
+        final glowAlpha = 0.08 + (t * 0.10);
+        final leftOffset = -6 + (t * 6);
+        final rightOffset = 6 - (t * 6);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Transform.translate(
+              offset: Offset(leftOffset, 0),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: compact ? 22 : 24,
+                color: const Color(
+                  0xFF146C2E,
+                ).withValues(alpha: 0.52 + (t * 0.38)),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Transform.scale(
+              scale: iconScale,
+              child: Container(
+                width: compact ? 30 : 34,
+                height: compact ? 30 : 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF146C2E).withValues(alpha: glowAlpha),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.verified_rounded,
+                  size: 18,
+                  color: Color(0xFF146C2E),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Transform.translate(
+              offset: Offset(rightOffset, 0),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: compact ? 22 : 24,
+                color: const Color(
+                  0xFF146C2E,
+                ).withValues(alpha: 0.52 + (t * 0.38)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (compact) {
+      return child;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: const Color(0xFF1F1F1F).withValues(alpha: 0.1),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
 class _SponsoredHints extends StatelessWidget {
   const _SponsoredHints({
     required this.dx,
@@ -1083,13 +1203,12 @@ class _SponsoredHints extends StatelessWidget {
             ),
           ] else
             Align(
-              alignment: Alignment.center,
-              child: Opacity(
-                opacity: dismissOpacity,
-                child: _HintChip(
-                  label: l10n.sponsoredCardContinue,
-                  color: const Color(0xFF1F1F1F),
-                  icon: Icons.swipe_rounded,
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                child: Opacity(
+                  opacity: (0.88 + (dismissOpacity * 0.12)).clamp(0.0, 1.0),
+                  child: const _SponsoredReadyBanner(),
                 ),
               ),
             ),
@@ -1104,6 +1223,7 @@ class _SponsoredCard extends StatelessWidget {
     required this.serial,
     required this.isLocked,
     required this.lockProgress,
+    required this.remainingSeconds,
     required this.onAdReady,
     this.dragDx = 0,
     this.width = 1,
@@ -1112,6 +1232,7 @@ class _SponsoredCard extends StatelessWidget {
   final int serial;
   final bool isLocked;
   final double lockProgress;
+  final int remainingSeconds;
   final VoidCallback onAdReady;
   final double dragDx;
   final double width;
@@ -1120,9 +1241,7 @@ class _SponsoredCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final intentProgress = (dragDx.abs() / (width * 0.22)).clamp(0.0, 1.0);
-    final statusText = isLocked
-        ? l10n.sponsoredCardUnlocking
-        : l10n.sponsoredCardUnlockReady;
+    final statusText = l10n.sponsoredCardUnlockingCountdown(remainingSeconds);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -1182,17 +1301,20 @@ class _SponsoredCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: lockProgress,
-                      backgroundColor: const Color(0x14000000),
-                      valueColor: const AlwaysStoppedAnimation(
-                        Color(0xFF1F1F1F),
+                  if (isLocked)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 6,
+                        value: lockProgress,
+                        backgroundColor: const Color(0x14000000),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFF1F1F1F),
+                        ),
                       ),
-                    ),
-                  ),
+                    )
+                  else
+                    const _SponsoredReadyBanner(),
                   const Spacer(),
                   PicmeBannerAdSlot(
                     key: ValueKey('sponsored-card-ad-$serial'),
@@ -1222,18 +1344,23 @@ class _SponsoredCard extends StatelessWidget {
                     },
                   ),
                   const Spacer(),
-                  Center(
-                    child: Text(
-                      statusText,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.1,
-                        color: const Color(0xFF1F1F1F).withValues(alpha: 0.62),
+                  if (isLocked)
+                    Center(
+                      child: Text(
+                        statusText,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.1,
+                          color: const Color(
+                            0xFF1F1F1F,
+                          ).withValues(alpha: 0.62),
+                        ),
                       ),
-                    ),
-                  ),
+                    )
+                  else
+                    const Center(child: _SponsoredReadyBanner(compact: true)),
                 ],
               ),
             ),
@@ -1670,7 +1797,3 @@ class _CategoryNotFoundState extends StatelessWidget {
     );
   }
 }
-
-
-
-
