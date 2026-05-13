@@ -385,18 +385,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get limitedAccessAction => 'Select more';
 
   @override
-  String queueSummary(int count, String mb) {
-    return '$count items • ~$mb MB';
+  String queueSummary(int count, String size) {
+    return '$count items • ~$size';
   }
 
   @override
-  String deleteItemsButtonWithSize(int count, String mb) {
-    return 'Delete $count Items (~$mb MB)';
+  String get queueStatSize => 'Size';
+
+  @override
+  String get queueStatPhotos => 'Photos';
+
+  @override
+  String get queueStatVideos => 'Videos';
+
+  @override
+  String get queueFilterLabel => 'Show';
+
+  @override
+  String get queueFilterAll => 'All';
+
+  @override
+  String get queueFilterPhotos => 'Photos';
+
+  @override
+  String get queueFilterVideos => 'Videos';
+
+  @override
+  String get queueSortLabel => 'Sort';
+
+  @override
+  String get queueSortAdded => 'Added order';
+
+  @override
+  String get queueSortSize => 'Largest first';
+
+  @override
+  String deleteItemsButtonWithSize(int count, String size) {
+    return 'Delete $count Items (~$size)';
   }
 
   @override
-  String confirmDeleteBodyWithSize(int count, String mb) {
-    return '$count items (~$mb MB) will be permanently deleted. This cannot be undone.';
+  String confirmDeleteBodyWithSize(int count, String size) {
+    return '$count items (~$size) will be permanently deleted. This cannot be undone.';
   }
 
   @override

@@ -773,20 +773,80 @@ abstract class AppLocalizations {
   /// Queue header summary with size
   ///
   /// In tr, this message translates to:
-  /// **'{count} öğe • ~{mb} MB'**
-  String queueSummary(int count, String mb);
+  /// **'{count} öğe • ~{size}'**
+  String queueSummary(int count, String size);
+
+  /// Queue stat chip label for total size
+  ///
+  /// In tr, this message translates to:
+  /// **'Boyut'**
+  String get queueStatSize;
+
+  /// Queue stat chip label for photo count
+  ///
+  /// In tr, this message translates to:
+  /// **'Foto'**
+  String get queueStatPhotos;
+
+  /// Queue stat chip label for video count
+  ///
+  /// In tr, this message translates to:
+  /// **'Video'**
+  String get queueStatVideos;
+
+  /// Queue controls label for media filter
+  ///
+  /// In tr, this message translates to:
+  /// **'Göster'**
+  String get queueFilterLabel;
+
+  /// Queue filter label for all items
+  ///
+  /// In tr, this message translates to:
+  /// **'Tümü'**
+  String get queueFilterAll;
+
+  /// Queue filter label for photos
+  ///
+  /// In tr, this message translates to:
+  /// **'Foto'**
+  String get queueFilterPhotos;
+
+  /// Queue filter label for videos
+  ///
+  /// In tr, this message translates to:
+  /// **'Video'**
+  String get queueFilterVideos;
+
+  /// Queue controls label for sort selector
+  ///
+  /// In tr, this message translates to:
+  /// **'Sırala'**
+  String get queueSortLabel;
+
+  /// Queue sort chip label for added order
+  ///
+  /// In tr, this message translates to:
+  /// **'Eklenme sırası'**
+  String get queueSortAdded;
+
+  /// Queue sort chip label for largest files first
+  ///
+  /// In tr, this message translates to:
+  /// **'Büyükten küçüğe'**
+  String get queueSortSize;
 
   /// Delete button label with size
   ///
   /// In tr, this message translates to:
-  /// **'{count} öğeyi sil (~{mb} MB)'**
-  String deleteItemsButtonWithSize(int count, String mb);
+  /// **'{count} öğeyi sil (~{size})'**
+  String deleteItemsButtonWithSize(int count, String size);
 
   /// Confirmation dialog body with size
   ///
   /// In tr, this message translates to:
-  /// **'{count} öğe (~{mb} MB) kalıcı olarak silinecek. Bu işlem geri alınamaz.'**
-  String confirmDeleteBodyWithSize(int count, String mb);
+  /// **'{count} öğe (~{size}) kalıcı olarak silinecek. Bu işlem geri alınamaz.'**
+  String confirmDeleteBodyWithSize(int count, String size);
 
   /// Privacy policy settings tile title
   ///

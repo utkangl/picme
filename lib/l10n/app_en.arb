@@ -161,27 +161,38 @@
   "limitedAccessBanner": "Access limited to selected photos.",
   "limitedAccessAction": "Select more",
 
-  "queueSummary": "{count} items • ~{mb} MB",
+  "queueSummary": "{count} items • ~{size}",
   "@queueSummary": {
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 
-  "deleteItemsButtonWithSize": "Delete {count} Items (~{mb} MB)",
+  "queueStatSize": "Size",
+  "queueStatPhotos": "Photos",
+  "queueStatVideos": "Videos",
+  "queueFilterLabel": "Show",
+  "queueFilterAll": "All",
+  "queueFilterPhotos": "Photos",
+  "queueFilterVideos": "Videos",
+  "queueSortLabel": "Sort",
+  "queueSortAdded": "Added order",
+  "queueSortSize": "Largest first",
+
+  "deleteItemsButtonWithSize": "Delete {count} Items (~{size})",
   "@deleteItemsButtonWithSize": {
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 
-  "confirmDeleteBodyWithSize": "{count} items (~{mb} MB) will be permanently deleted. This cannot be undone.",
+  "confirmDeleteBodyWithSize": "{count} items (~{size}) will be permanently deleted. This cannot be undone.",
   "@confirmDeleteBodyWithSize": {
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 

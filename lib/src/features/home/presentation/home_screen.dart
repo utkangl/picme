@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/l10n/app_localizations.dart';
 import 'package:picme/src/core/ads/admob_config.dart';
 import 'package:picme/src/core/ads/picme_banner_ad_slot.dart';
@@ -69,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
   _AppView _view = _AppView.home;
 
   List<MediaItem> _media = [];
-  List<MediaItem> _recent = [];
   Map<GalleryCategory, int> _counts = {
     for (final c in GalleryCategory.values) c: 0,
   };
@@ -238,23 +237,71 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _hydrateQueueFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList(_queuePrefsKey) ?? const [];
-    if (ids.isEmpty) return;
-    final resolved = await _repo.getMediaByIds(ids);
+    final storedEntries = _decodeQueueEntries(
+      prefs.getStringList(_queuePrefsKey) ?? const [],
+    );
+    if (storedEntries.isEmpty) return;
+    final resolved = await _repo.getMediaByIds(
+      storedEntries.map((entry) => entry.id).toList(),
+    );
+    final storedSizes = {
+      for (final entry in storedEntries)
+        if (entry.fileSizeInBytes != null) entry.id: entry.fileSizeInBytes!,
+    };
+    final restored = [
+      for (final item in resolved)
+        storedSizes.containsKey(item.id)
+            ? item.copyWith(fileSizeInBytes: storedSizes[item.id])
+            : item,
+    ];
+    final warmed = await _repo.warmSizes(restored);
     if (!mounted) return;
     setState(() {
       _deleteQueue
         ..clear()
-        ..addAll(resolved);
+        ..addAll(warmed);
     });
+    unawaited(_persistQueue());
   }
 
   Future<void> _persistQueue() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
       _queuePrefsKey,
-      _deleteQueue.map((item) => item.id).toList(),
+      _deleteQueue.map(_encodeQueueEntry).toList(),
     );
+  }
+
+  String _encodeQueueEntry(MediaItem item) {
+    return jsonEncode({
+      'id': item.id,
+      if (item.fileSizeInBytes != null) 'fileSizeInBytes': item.fileSizeInBytes,
+    });
+  }
+
+  List<({String id, int? fileSizeInBytes})> _decodeQueueEntries(
+    List<String> rawEntries,
+  ) {
+    final decoded = <({String id, int? fileSizeInBytes})>[];
+    for (final raw in rawEntries) {
+      try {
+        final json = jsonDecode(raw);
+        if (json is Map<String, dynamic>) {
+          final id = json['id'];
+          final size = json['fileSizeInBytes'];
+          if (id is String && id.isNotEmpty) {
+            decoded.add((id: id, fileSizeInBytes: size is int ? size : null));
+            continue;
+          }
+        }
+      } catch (_) {
+        // Older builds stored raw ids only; keep supporting them.
+      }
+      if (raw.isNotEmpty) {
+        decoded.add((id: raw, fileSizeInBytes: null));
+      }
+    }
+    return decoded;
   }
 
   Future<void> _persistHistory() async {
@@ -276,7 +323,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
     });
     try {
-      final recent = await _loadRecentPreview();
       // Use getCount() for category totals — much faster than loading all items.
       final countFutures = GalleryCategory.values.map(
         (cat) => _repo.getCount(cat),
@@ -294,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final folders = _filterPredefinedFolders(allFolders);
       if (!mounted) return;
       setState(() {
-        _recent = _filterKept(_filterQueued(recent)).take(15).toList();
         _counts = counts;
         _folders = folders;
         _isLoading = false;
@@ -440,31 +485,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return items.where((item) => !_keptIds.contains(item.id)).toList();
   }
 
-  List<MediaItem> _filterKept(List<MediaItem> items) {
-    if (_keptIds.isEmpty) return items;
-    return items.where((item) => !_keptIds.contains(item.id)).toList();
-  }
-
-  Future<List<MediaItem>> _loadRecentPreview() async {
-    final collected = <MediaItem>[];
-    var page = 0;
-    const pageSize = 60;
-    while (collected.length < 15) {
-      final batch = await _repo.getMedia(
-        category: GalleryCategory.allMedia,
-        sortOption: SortOption.newestFirst,
-        page: page,
-        pageSize: pageSize,
-      );
-      if (batch.isEmpty) break;
-      collected.addAll(_filterKept(_filterQueued(batch)));
-      if (batch.length < pageSize) break;
-      page += 1;
-    }
-    final seen = <String>{};
-    return collected.where((item) => seen.add(item.id)).take(15).toList();
-  }
-
   Future<({List<MediaItem> items, int lastPage, bool hasMore})>
   _loadVisibleMediaChunk({
     required int startPage,
@@ -573,7 +593,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _deleteQueue.add(item);
       _media.removeWhere((m) => m.id == item.id);
-      _recent.removeWhere((m) => m.id == item.id);
       if (_remainingDeckCount > 0) {
         _remainingDeckCount -= 1;
       }
@@ -591,15 +610,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _resolveSizeForQueueItem(MediaItem item) async {
     try {
-      final file = await item.asset.file;
-      if (file == null) return;
-      final size = await file.length();
+      final resolved = await _repo.warmSizes([item]);
+      if (resolved.isEmpty) return;
+      final sizedItem = resolved.first;
       if (!mounted) return;
       final idx = _deleteQueue.indexWhere((q) => q.id == item.id);
       if (idx == -1) return;
       setState(() {
-        _deleteQueue[idx] = item.copyWith(fileSizeInBytes: size);
+        _deleteQueue[idx] = sizedItem;
       });
+      unawaited(_persistQueue());
     } catch (_) {
       // Ignore; size will remain null
     }
@@ -637,9 +657,6 @@ class _HomeScreenState extends State<HomeScreen> {
         case SwipeAction.delete:
           _deleteQueue.removeWhere((q) => q.id == record.item.id);
           _media = [record.item, ..._media];
-          if (!_recent.any((m) => m.id == record.item.id)) {
-            _recent = [record.item, ..._recent].take(15).toList();
-          }
           break;
         case SwipeAction.keep:
           if (!record.wasAlreadyKept) {
@@ -794,7 +811,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (isLimited) _LimitedAccessBanner(onSelectMore: _onSelectMorePhotos),
         Expanded(
           child: _HomeView(
-            recent: _recent,
             counts: _counts,
             folders: _folders,
             categoryBytes: _categoryBytes,
@@ -802,8 +818,6 @@ class _HomeScreenState extends State<HomeScreen> {
             totalSavedBytes: _totalSavedBytes,
             selectedSort: _selectedSort,
             activeFilters: _activeFilters,
-            isLoading: _isLoading,
-            errorMessage: _errorMessage,
             queueCount: _deleteQueue.length,
             keptCount: _keptIds.length,
             settingsKey: _settingsKey,
@@ -936,7 +950,6 @@ enum _AppView { home, swipe, queue }
 
 class _HomeView extends StatelessWidget {
   const _HomeView({
-    required this.recent,
     required this.counts,
     required this.folders,
     required this.categoryBytes,
@@ -944,8 +957,6 @@ class _HomeView extends StatelessWidget {
     required this.totalSavedBytes,
     required this.selectedSort,
     required this.activeFilters,
-    required this.isLoading,
-    required this.errorMessage,
     required this.queueCount,
     required this.keptCount,
     required this.settingsKey,
@@ -961,7 +972,6 @@ class _HomeView extends StatelessWidget {
     required this.onOpenKept,
   });
 
-  final List<MediaItem> recent;
   final Map<GalleryCategory, int> counts;
   final List<({AssetPathEntity entity, int count})> folders;
   final Map<GalleryCategory, int> categoryBytes;
@@ -972,8 +982,6 @@ class _HomeView extends StatelessWidget {
   final int totalSavedBytes;
   final SortOption selectedSort;
   final MediaFilters activeFilters;
-  final bool isLoading;
-  final String? errorMessage;
   final int queueCount;
   final int keptCount;
   final GlobalKey settingsKey;
@@ -1053,40 +1061,6 @@ class _HomeView extends StatelessWidget {
           firstKey: firstCategoryKey,
           onTap: onOpenCategory,
           onTapFolder: onOpenFolder,
-        ),
-        const SizedBox(height: 24),
-        _SectionHeader(label: l10n.recent),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 220,
-          child: () {
-            if (isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (errorMessage != null) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  errorMessage!,
-                  style: const TextStyle(color: Color(0xFFD64545)),
-                ),
-              );
-            }
-            if (recent.isEmpty) return const SizedBox.shrink();
-            return ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              itemBuilder: (context, index) {
-                final item = recent[index];
-                return _RecentTile(
-                  item: item,
-                  onTap: () => onOpenCategory(GalleryCategory.allMedia),
-                );
-              },
-              separatorBuilder: (context, index) => const SizedBox(width: 10),
-              itemCount: recent.length,
-            );
-          }(),
         ),
       ],
     );
@@ -1789,71 +1763,6 @@ class _Palette {
   final Color fg;
 }
 
-class _RecentTile extends StatelessWidget {
-  const _RecentTile({required this.item, required this.onTap});
-
-  final MediaItem item;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 160,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white.withValues(alpha: 0.6),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _SimpleThumb(item: item),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                height: 70,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xCC000000)],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 10,
-              child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _BottomNavBar extends StatelessWidget {
   const _BottomNavBar({
     required this.current,
@@ -1996,39 +1905,6 @@ class _NavItem extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SimpleThumb extends StatelessWidget {
-  const _SimpleThumb({required this.item});
-
-  final MediaItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image(
-          image: AssetEntityImageProvider(
-            item.asset,
-            isOriginal: false,
-            thumbnailSize: const ThumbnailSize.square(400),
-          ),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              const ColoredBox(color: Colors.black26),
-        ),
-        if (item.type == MediaType.video)
-          const Center(
-            child: Icon(
-              Icons.play_circle_outline_rounded,
-              color: Colors.white,
-              size: 42,
-            ),
-          ),
-      ],
     );
   }
 }

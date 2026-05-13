@@ -82,6 +82,7 @@ class _SwipeScreenState extends State<SwipeScreen>
     with TickerProviderStateMixin {
   static const double _swipeThresholdRatio = 0.18;
   static const double _velocityThreshold = 700;
+  static const double _sponsoredLockedDragLimit = 28;
   static const Duration _sponsoredLockDuration = Duration(seconds: 10);
 
   Offset _dragOffset = Offset.zero;
@@ -564,10 +565,21 @@ class _SwipeScreenState extends State<SwipeScreen>
                   details.delta.dx,
                 );
                 final resistedDy = details.delta.dy * 0.08;
+                final nextDx = _dragOffset.dx + resistedDx;
+                final nextDy = _dragOffset.dy + resistedDy;
                 setState(() {
                   _dragOffset = Offset(
-                    _dragOffset.dx + resistedDx,
-                    _dragOffset.dy + resistedDy,
+                    isSponsoredCard && _isSponsoredLocked
+                        ? nextDx
+                              .clamp(
+                                -_sponsoredLockedDragLimit,
+                                _sponsoredLockedDragLimit,
+                              )
+                              .toDouble()
+                        : nextDx,
+                    isSponsoredCard && _isSponsoredLocked
+                        ? nextDy.clamp(-10, 10).toDouble()
+                        : nextDy,
                   );
                 });
               },

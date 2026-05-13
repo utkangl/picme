@@ -386,18 +386,48 @@ class AppLocalizationsTr extends AppLocalizations {
   String get limitedAccessAction => 'Daha fazla seç';
 
   @override
-  String queueSummary(int count, String mb) {
-    return '$count öğe • ~$mb MB';
+  String queueSummary(int count, String size) {
+    return '$count öğe • ~$size';
   }
 
   @override
-  String deleteItemsButtonWithSize(int count, String mb) {
-    return '$count öğeyi sil (~$mb MB)';
+  String get queueStatSize => 'Boyut';
+
+  @override
+  String get queueStatPhotos => 'Foto';
+
+  @override
+  String get queueStatVideos => 'Video';
+
+  @override
+  String get queueFilterLabel => 'Göster';
+
+  @override
+  String get queueFilterAll => 'Tümü';
+
+  @override
+  String get queueFilterPhotos => 'Foto';
+
+  @override
+  String get queueFilterVideos => 'Video';
+
+  @override
+  String get queueSortLabel => 'Sırala';
+
+  @override
+  String get queueSortAdded => 'Eklenme sırası';
+
+  @override
+  String get queueSortSize => 'Büyükten küçüğe';
+
+  @override
+  String deleteItemsButtonWithSize(int count, String size) {
+    return '$count öğeyi sil (~$size)';
   }
 
   @override
-  String confirmDeleteBodyWithSize(int count, String mb) {
-    return '$count öğe (~$mb MB) kalıcı olarak silinecek. Bu işlem geri alınamaz.';
+  String confirmDeleteBodyWithSize(int count, String size) {
+    return '$count öğe (~$size) kalıcı olarak silinecek. Bu işlem geri alınamaz.';
   }
 
   @override

@@ -382,30 +382,60 @@
   "limitedAccessAction": "Daha fazla seç",
   "@limitedAccessAction": {"description": "Limited access banner action button"},
 
-  "queueSummary": "{count} öğe • ~{mb} MB",
+  "queueSummary": "{count} öğe • ~{size}",
   "@queueSummary": {
     "description": "Queue header summary with size",
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 
-  "deleteItemsButtonWithSize": "{count} öğeyi sil (~{mb} MB)",
+  "queueStatSize": "Boyut",
+  "@queueStatSize": {"description": "Queue stat chip label for total size"},
+
+  "queueStatPhotos": "Foto",
+  "@queueStatPhotos": {"description": "Queue stat chip label for photo count"},
+
+  "queueStatVideos": "Video",
+  "@queueStatVideos": {"description": "Queue stat chip label for video count"},
+
+  "queueFilterLabel": "Göster",
+  "@queueFilterLabel": {"description": "Queue controls label for media filter"},
+
+  "queueFilterAll": "Tümü",
+  "@queueFilterAll": {"description": "Queue filter label for all items"},
+
+  "queueFilterPhotos": "Foto",
+  "@queueFilterPhotos": {"description": "Queue filter label for photos"},
+
+  "queueFilterVideos": "Video",
+  "@queueFilterVideos": {"description": "Queue filter label for videos"},
+
+  "queueSortLabel": "Sırala",
+  "@queueSortLabel": {"description": "Queue controls label for sort selector"},
+
+  "queueSortAdded": "Eklenme sırası",
+  "@queueSortAdded": {"description": "Queue sort chip label for added order"},
+
+  "queueSortSize": "Büyükten küçüğe",
+  "@queueSortSize": {"description": "Queue sort chip label for largest files first"},
+
+  "deleteItemsButtonWithSize": "{count} öğeyi sil (~{size})",
   "@deleteItemsButtonWithSize": {
     "description": "Delete button label with size",
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 
-  "confirmDeleteBodyWithSize": "{count} öğe (~{mb} MB) kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+  "confirmDeleteBodyWithSize": "{count} öğe (~{size}) kalıcı olarak silinecek. Bu işlem geri alınamaz.",
   "@confirmDeleteBodyWithSize": {
     "description": "Confirmation dialog body with size",
     "placeholders": {
       "count": {"type": "int"},
-      "mb": {"type": "String"}
+      "size": {"type": "String"}
     }
   },
 
