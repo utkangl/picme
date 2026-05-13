@@ -38,6 +38,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeHeroSubtitle => 'Swipe left to queue, right to keep.';
 
   @override
+  String get homeSwipeLaunchTitle => 'Start cleaning by swiping';
+
+  @override
+  String get homeSwipeLaunchSubtitle =>
+      'Open a deck, swipe left to queue clutter, and swipe right to keep what stays.';
+
+  @override
+  String get homeSwipeLaunchCta => 'Start with All Media';
+
+  @override
+  String get homeSwipeQuickPicks => 'Or jump straight into';
+
+  @override
+  String get homeCategoriesSecondary => 'More categories';
+
+  @override
   String get statsTotal => 'Total';
 
   @override

@@ -38,6 +38,22 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeHeroSubtitle => 'Sola kaydır ve sırala, sağa kaydır ve sakla.';
 
   @override
+  String get homeSwipeLaunchTitle => 'Kaydırarak temizlemeye başla';
+
+  @override
+  String get homeSwipeLaunchSubtitle =>
+      'Bir deste aç, kalabalığı sola kaydırıp sıraya ekle, kalacakları sağa kaydır.';
+
+  @override
+  String get homeSwipeLaunchCta => 'Tüm Medya ile başla';
+
+  @override
+  String get homeSwipeQuickPicks => 'Ya da doğrudan şuraya gir';
+
+  @override
+  String get homeCategoriesSecondary => 'Diğer kategoriler';
+
+  @override
   String get statsTotal => 'Toplam';
 
   @override

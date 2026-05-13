@@ -33,6 +33,21 @@
   "homeHeroSubtitle": "Sola kaydır ve sırala, sağa kaydır ve sakla.",
   "@homeHeroSubtitle": {"description": "Hero card subtitle on home"},
 
+  "homeSwipeLaunchTitle": "Kaydırarak temizlemeye başla",
+  "@homeSwipeLaunchTitle": {"description": "Primary swipe launch card title on home"},
+
+  "homeSwipeLaunchSubtitle": "Bir deste aç, kalabalığı sola kaydırıp sıraya ekle, kalacakları sağa kaydır.",
+  "@homeSwipeLaunchSubtitle": {"description": "Primary swipe launch card subtitle on home"},
+
+  "homeSwipeLaunchCta": "Tüm Medya ile başla",
+  "@homeSwipeLaunchCta": {"description": "Primary CTA label to open swipe deck from home"},
+
+  "homeSwipeQuickPicks": "Ya da doğrudan şuraya gir",
+  "@homeSwipeQuickPicks": {"description": "Quick picks label under the main swipe CTA"},
+
+  "homeCategoriesSecondary": "Diğer kategoriler",
+  "@homeCategoriesSecondary": {"description": "Secondary categories section label under swipe launcher"},
+
   "statsTotal": "Toplam",
   "@statsTotal": {"description": "Stats label - total media count"},
 

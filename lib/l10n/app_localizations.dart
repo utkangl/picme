@@ -152,6 +152,36 @@ abstract class AppLocalizations {
   /// **'Sola kaydır ve sırala, sağa kaydır ve sakla.'**
   String get homeHeroSubtitle;
 
+  /// Primary swipe launch card title on home
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaydırarak temizlemeye başla'**
+  String get homeSwipeLaunchTitle;
+
+  /// Primary swipe launch card subtitle on home
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir deste aç, kalabalığı sola kaydırıp sıraya ekle, kalacakları sağa kaydır.'**
+  String get homeSwipeLaunchSubtitle;
+
+  /// Primary CTA label to open swipe deck from home
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Medya ile başla'**
+  String get homeSwipeLaunchCta;
+
+  /// Quick picks label under the main swipe CTA
+  ///
+  /// In tr, this message translates to:
+  /// **'Ya da doğrudan şuraya gir'**
+  String get homeSwipeQuickPicks;
+
+  /// Secondary categories section label under swipe launcher
+  ///
+  /// In tr, this message translates to:
+  /// **'Diğer kategoriler'**
+  String get homeCategoriesSecondary;
+
   /// Stats label - total media count
   ///
   /// In tr, this message translates to:

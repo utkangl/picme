@@ -999,7 +999,6 @@ class _HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final subtitleText = l10n.homeHeroSubtitle;
 
     return ListView(
       physics: const ClampingScrollPhysics(),
@@ -1013,14 +1012,21 @@ class _HomeView extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         _HeroCard(
-          title: l10n.homeHeroTitle,
-          subtitle: subtitleText,
+          title: l10n.homeSwipeLaunchTitle,
+          subtitle: l10n.homeSwipeLaunchSubtitle,
+          primaryLabel: l10n.homeSwipeLaunchCta,
+          quickPicksLabel: l10n.homeSwipeQuickPicks,
           totalValue: formatBytes(totalSavedBytes),
           queuedCount: queueCount,
           keptCount: keptCount,
           totalLabel: l10n.historySavingsTitle,
           queuedLabel: l10n.statsQueued,
           keptLabel: l10n.statsKept,
+          photosLabel: l10n.catPhotos,
+          videosLabel: l10n.catVideos,
+          onStartAllMedia: () => onOpenCategory(GalleryCategory.allMedia),
+          onOpenPhotos: () => onOpenCategory(GalleryCategory.photos),
+          onOpenVideos: () => onOpenCategory(GalleryCategory.videos),
           onTapTotal: onOpenHistory,
           onTapQueued: onOpenQueue,
           onTapKept: onOpenKept,
@@ -1051,7 +1057,7 @@ class _HomeView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
-        _SectionHeader(label: l10n.categories),
+        _SectionHeader(label: l10n.homeCategoriesSecondary),
         const SizedBox(height: 12),
         _CategoryGrid(
           counts: counts,
@@ -1167,12 +1173,19 @@ class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.title,
     required this.subtitle,
+    required this.primaryLabel,
+    required this.quickPicksLabel,
     required this.totalValue,
     required this.queuedCount,
     required this.keptCount,
     required this.totalLabel,
     required this.queuedLabel,
     required this.keptLabel,
+    required this.photosLabel,
+    required this.videosLabel,
+    required this.onStartAllMedia,
+    required this.onOpenPhotos,
+    required this.onOpenVideos,
     this.onTapTotal,
     this.onTapQueued,
     this.onTapKept,
@@ -1180,12 +1193,19 @@ class _HeroCard extends StatelessWidget {
 
   final String title;
   final String subtitle;
+  final String primaryLabel;
+  final String quickPicksLabel;
   final String totalValue;
   final int queuedCount;
   final int keptCount;
   final String totalLabel;
   final String queuedLabel;
   final String keptLabel;
+  final String photosLabel;
+  final String videosLabel;
+  final VoidCallback onStartAllMedia;
+  final VoidCallback onOpenPhotos;
+  final VoidCallback onOpenVideos;
   final VoidCallback? onTapTotal;
   final VoidCallback? onTapQueued;
   final VoidCallback? onTapKept;
@@ -1212,27 +1232,75 @@ class _HeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.4,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.74),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              const _DeckGlyph(),
+            ],
           ),
           const SizedBox(height: 18),
+          _HeroPrimaryButton(label: primaryLabel, onTap: onStartAllMedia),
+          const SizedBox(height: 12),
+          Text(
+            quickPicksLabel,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroQuickPick(
+                  icon: Icons.photo_library_rounded,
+                  label: photosLabel,
+                  onTap: onOpenPhotos,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroQuickPick(
+                  icon: Icons.videocam_rounded,
+                  label: videosLabel,
+                  onTap: onOpenVideos,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.10)),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -1243,11 +1311,7 @@ class _HeroCard extends StatelessWidget {
                   onTap: onTapTotal,
                 ),
               ),
-              Container(
-                width: 1,
-                height: 36,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
+              _HeroDivider(),
               Expanded(
                 child: _HeroStat(
                   value: _formatCompactCount(queuedCount),
@@ -1256,11 +1320,7 @@ class _HeroCard extends StatelessWidget {
                   onTap: onTapQueued,
                 ),
               ),
-              Container(
-                width: 1,
-                height: 36,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
+              _HeroDivider(),
               Expanded(
                 child: _HeroStat(
                   value: _formatCompactCount(keptCount),
@@ -1273,6 +1333,172 @@ class _HeroCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DeckGlyph extends StatelessWidget {
+  const _DeckGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 92,
+      height: 92,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Transform.rotate(
+            angle: -0.22,
+            child: _DeckGlyphCard(
+              color: const Color(0x33FFFFFF),
+              borderColor: const Color(0x2EFFFFFF),
+            ),
+          ),
+          Transform.rotate(
+            angle: 0.12,
+            child: _DeckGlyphCard(
+              color: const Color(0x26FFFFFF),
+              borderColor: const Color(0x24FFFFFF),
+            ),
+          ),
+          const _DeckGlyphCard(
+            color: Color(0xFFF4F5F7),
+            borderColor: Color(0x33FFFFFF),
+            child: Icon(
+              Icons.swipe_rounded,
+              color: Color(0xFF1F1F1F),
+              size: 28,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeckGlyphCard extends StatelessWidget {
+  const _DeckGlyphCard({
+    required this.color,
+    required this.borderColor,
+    this.child,
+  });
+
+  final Color color;
+  final Color borderColor;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 66,
+      height: 82,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor),
+      ),
+      alignment: Alignment.center,
+      child: child,
+    );
+  }
+}
+
+class _HeroPrimaryButton extends StatelessWidget {
+  const _HeroPrimaryButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.play_arrow_rounded,
+                size: 20,
+                color: Color(0xFF1F1F1F),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF1F1F1F),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroQuickPick extends StatelessWidget {
+  const _HeroQuickPick({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 36,
+      color: Colors.white.withValues(alpha: 0.12),
     );
   }
 }
