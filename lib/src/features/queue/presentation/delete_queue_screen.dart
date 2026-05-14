@@ -825,10 +825,6 @@ class _QueuePreviewScreen extends StatelessWidget {
     final isVideo = item.type == MediaType.video;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-      ),
       body: Stack(
         children: [
           GestureDetector(
@@ -855,22 +851,25 @@ class _QueuePreviewScreen extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 18,
-            left: 18,
+            top: 0,
+            left: 0,
             child: SafeArea(
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.55),
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: Colors.white,
-                      size: 22,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8, top: 8),
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ),

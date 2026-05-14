@@ -24,6 +24,10 @@ class PicmeBannerAdSlot extends StatefulWidget {
   final VoidCallback? onAdLoaded;
   final VoidCallback? onAdFailedToLoad;
 
+  static Future<void> preload(PicmeAdPlacement placement) async {
+    await _PicmeBannerAdSlotState.preload(placement);
+  }
+
   @override
   State<PicmeBannerAdSlot> createState() => _PicmeBannerAdSlotState();
 }
@@ -71,29 +75,12 @@ class _PicmeBannerAdSlotState extends State<PicmeBannerAdSlot>
       return;
     }
     _loadStarted = true;
-    await PicmeAdMobConfig.ensureInitialized();
-    if (!mounted) return;
-
-    final cached = _adCache[widget.placement];
-    if (cached != null) {
-      setState(() => _ad = cached);
-      _notifyLoaded();
-      return;
-    }
-
-    final future = _pendingLoads[widget.placement] ??= _createAndLoadAd(
-      widget.placement,
-    );
-    final loadedAd = await future;
-    if (_pendingLoads[widget.placement] == future) {
-      _pendingLoads.remove(widget.placement);
-    }
+    final loadedAd = await preload(widget.placement);
     if (!mounted) return;
     if (loadedAd == null) {
       _notifyFailed();
       return;
     }
-    _adCache[widget.placement] = loadedAd;
     setState(() => _ad = loadedAd);
     _notifyLoaded();
   }
@@ -103,7 +90,31 @@ class _PicmeBannerAdSlotState extends State<PicmeBannerAdSlot>
     super.dispose();
   }
 
-  Future<BannerAd?> _createAndLoadAd(PicmeAdPlacement placement) {
+  static Future<BannerAd?> preload(PicmeAdPlacement placement) async {
+    if (!PicmeAdMobConfig.isSupportedPlatform ||
+        !PicmeAdMobConfig.isPlacementEnabled(placement)) {
+      return null;
+    }
+    final cached = _adCache[placement];
+    if (cached != null) return cached;
+
+    await PicmeAdMobConfig.ensureInitialized();
+
+    final existing = _adCache[placement];
+    if (existing != null) return existing;
+
+    final future = _pendingLoads[placement] ??= _createAndLoadAd(placement);
+    final loadedAd = await future;
+    if (_pendingLoads[placement] == future) {
+      _pendingLoads.remove(placement);
+    }
+    if (loadedAd != null) {
+      _adCache[placement] = loadedAd;
+    }
+    return loadedAd;
+  }
+
+  static Future<BannerAd?> _createAndLoadAd(PicmeAdPlacement placement) {
     final completer = Completer<BannerAd?>();
     final ad = BannerAd(
       adUnitId: PicmeAdMobConfig.bannerUnitId(placement),

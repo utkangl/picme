@@ -36,6 +36,7 @@ class SwipeScreen extends StatefulWidget {
     required this.onBack,
     required this.onOpenQueue,
     required this.queueCount,
+    required this.swipesUntilSponsoredCard,
     required this.tourPrefsKey,
     this.onLoadMore,
     this.categoryNotFound = false,
@@ -69,6 +70,7 @@ class SwipeScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenQueue;
   final int queueCount;
+  final int swipesUntilSponsoredCard;
   final String tourPrefsKey;
 
   /// Called when the swipe deck is near empty and more pages may be available.
@@ -84,6 +86,8 @@ class _SwipeScreenState extends State<SwipeScreen>
   static const double _velocityThreshold = 700;
   static const double _sponsoredLockedDragLimit = 28;
   static const Duration _sponsoredLockDuration = Duration(seconds: 10);
+  static const Duration _sponsoredAdLoadTimeout = Duration(seconds: 8);
+  static const int _sponsoredPreloadLead = 3;
 
   Offset _dragOffset = Offset.zero;
   late final AnimationController _controller;
@@ -102,6 +106,7 @@ class _SwipeScreenState extends State<SwipeScreen>
 
   bool _tourChecked = false;
   bool _sponsoredExposureStarted = false;
+  Timer? _sponsoredLoadTimeoutTimer;
   final GlobalKey _cardKey = GlobalKey(debugLabel: 'swipe-card');
   final GlobalKey _revertKey = GlobalKey(debugLabel: 'swipe-revert');
   final GlobalKey _queueKey = GlobalKey(debugLabel: 'swipe-queue');
@@ -159,11 +164,13 @@ class _SwipeScreenState extends State<SwipeScreen>
           ),
         );
     _syncSponsoredLockState(forceRestart: widget.showSponsoredCard);
+    _maybePreloadSponsoredAd();
   }
 
   @override
   void dispose() {
     AppCoach.dismiss();
+    _sponsoredLoadTimeoutTimer?.cancel();
     _controller.dispose();
     _sponsoredLockController.dispose();
     _lockedShakeController.dispose();
@@ -257,6 +264,7 @@ class _SwipeScreenState extends State<SwipeScreen>
       _isUndoEntering = false;
       _pendingUndoEnter = false;
       _syncSponsoredLockState(forceRestart: widget.showSponsoredCard);
+      _maybePreloadSponsoredAd();
       return;
     }
     if (oldWidget.showSponsoredCard != widget.showSponsoredCard ||
@@ -275,6 +283,7 @@ class _SwipeScreenState extends State<SwipeScreen>
         _prepareUndoEnter();
       }
     }
+    _maybePreloadSponsoredAd();
   }
 
   void _prepareUndoEnter() {
@@ -302,24 +311,47 @@ class _SwipeScreenState extends State<SwipeScreen>
     _lockedShakeController.stop();
     _lockedShakeController.reset();
     if (!widget.showSponsoredCard) {
+      _sponsoredLoadTimeoutTimer?.cancel();
       _sponsoredLockController.stop();
       _sponsoredLockController.reset();
       _sponsoredExposureStarted = false;
       return;
     }
     if (!forceRestart && _sponsoredExposureStarted) return;
+    _sponsoredLoadTimeoutTimer?.cancel();
     _sponsoredLockController
       ..stop()
       ..reset();
     _sponsoredExposureStarted = false;
+    _sponsoredLoadTimeoutTimer = Timer(_sponsoredAdLoadTimeout, () {
+      if (!mounted || !widget.showSponsoredCard || _sponsoredExposureStarted) {
+        return;
+      }
+      widget.onDismissSponsoredCard();
+    });
   }
 
-  void _startSponsoredExposureTimer() {
+  void _maybePreloadSponsoredAd() {
+    if (widget.showSponsoredCard || widget.swipesUntilSponsoredCard <= 0) {
+      return;
+    }
+    if (widget.swipesUntilSponsoredCard > _sponsoredPreloadLead) return;
+    unawaited(PicmeBannerAdSlot.preload(PicmeAdPlacement.swipeSponsoredCard));
+  }
+
+  void _handleSponsoredAdLoaded() {
     if (!widget.showSponsoredCard || _sponsoredExposureStarted) return;
+    _sponsoredLoadTimeoutTimer?.cancel();
     _sponsoredExposureStarted = true;
     _sponsoredLockController
       ..stop()
       ..forward(from: 0);
+  }
+
+  void _handleSponsoredAdFailed() {
+    _sponsoredLoadTimeoutTimer?.cancel();
+    if (!widget.showSponsoredCard) return;
+    widget.onDismissSponsoredCard();
   }
 
   Future<void> _triggerSponsoredLockFeedback() async {
@@ -599,7 +631,8 @@ class _SwipeScreenState extends State<SwipeScreen>
                             isLocked: _isSponsoredLocked,
                             lockProgress: _sponsoredLockProgress,
                             remainingSeconds: _sponsoredLockRemainingSeconds,
-                            onAdReady: _startSponsoredExposureTimer,
+                            onAdLoaded: _handleSponsoredAdLoaded,
+                            onAdFailed: _handleSponsoredAdFailed,
                           )
                         : _MediaCard(
                             item: current,
@@ -1236,7 +1269,8 @@ class _SponsoredCard extends StatelessWidget {
     required this.isLocked,
     required this.lockProgress,
     required this.remainingSeconds,
-    required this.onAdReady,
+    required this.onAdLoaded,
+    required this.onAdFailed,
     this.dragDx = 0,
     this.width = 1,
   });
@@ -1245,7 +1279,8 @@ class _SponsoredCard extends StatelessWidget {
   final bool isLocked;
   final double lockProgress;
   final int remainingSeconds;
-  final VoidCallback onAdReady;
+  final VoidCallback onAdLoaded;
+  final VoidCallback onAdFailed;
   final double dragDx;
   final double width;
 
@@ -1331,8 +1366,8 @@ class _SponsoredCard extends StatelessWidget {
                   PicmeBannerAdSlot(
                     key: ValueKey('sponsored-card-ad-$serial'),
                     placement: PicmeAdPlacement.swipeSponsoredCard,
-                    onAdLoaded: onAdReady,
-                    onAdFailedToLoad: onAdReady,
+                    onAdLoaded: onAdLoaded,
+                    onAdFailedToLoad: onAdFailed,
                     builder: (context, adWidget) {
                       return Container(
                         width: double.infinity,

@@ -37,10 +37,16 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _queuePrefsKey = 'picme_delete_queue_ids';
   static const String _historyPrefsKey = 'picme_delete_history';
   static const String _keptPrefsKey = 'picme_kept_ids';
-  static const String _homeTourPrefsKey = 'picme_home_tour_done';
   static const String _swipeTourPrefsKey = 'picme_swipe_tour_done';
-  static const int _firstSponsoredCardAfter = 20;
-  static const int _sponsoredCardCooldown = 40;
+  static const String _startupSwipeCategoryPrefsKey =
+      'picme_startup_swipe_category';
+  static const String _startupSwipeFolderIdPrefsKey =
+      'picme_startup_swipe_folder_id';
+  static const String _startupSwipeFolderNamePrefsKey =
+      'picme_startup_swipe_folder_name';
+  static const int _firstSponsoredCardAfter = 15;
+  static const int _sponsoredCardGapStart = 20;
+  static const int _sponsoredCardGapStep = 10;
 
   final GalleryRepository _repo = GalleryRepository();
   final List<MediaItem> _deleteQueue = [];
@@ -89,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
   int _committedSwipeCount = 0;
   int _nextSponsoredCardAt = _firstSponsoredCardAfter;
+  int _nextSponsoredCardGap = _sponsoredCardGapStart;
   int _sponsoredCardSerial = 0;
   bool _showSponsoredCard = false;
   String? _ignoreAdCountForNextSwipeItemId;
@@ -134,8 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
       await _hydrateQueueFromStorage();
       await _loadHomeData();
       if (!mounted) return;
+      await _launchPreferredStartupView();
+      if (!mounted) return;
       setState(() => _showStartupLoading = false);
-      _maybeStartHomeTour();
     } else {
       setState(() {
         _isLoading = false;
@@ -144,69 +152,80 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _maybeStartHomeTour({bool force = false}) async {
+  Future<void> _restartTours() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!force && (prefs.getBool(_homeTourPrefsKey) ?? false)) return;
-    if (!mounted || _view != _AppView.home) return;
-    await WidgetsBinding.instance.endOfFrame;
+    await prefs.setBool(_swipeTourPrefsKey, false);
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context)!;
-    final completed = await AppCoach.show(
-      context,
-      steps: [
-        CoachStep(
-          targetKey: _settingsKey,
-          title: l10n.coachHomeSettingsTitle,
-          description: l10n.coachHomeSettingsDesc,
-          shape: CoachShape.circle,
-          padding: const EdgeInsets.all(4),
-        ),
-        CoachStep(
-          targetKey: _firstCategoryKey,
-          title: l10n.coachHomeCategoryTitle,
-          description: l10n.coachHomeCategoryDesc,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          radius: 16,
-        ),
-        CoachStep(
-          targetKey: _historyKey,
-          title: l10n.coachHomeHistoryTitle,
-          description: l10n.coachHomeHistoryDesc,
-          shape: CoachShape.circle,
-          padding: const EdgeInsets.all(4),
-        ),
-        CoachStep(
-          targetKey: _reviewNavKey,
-          title: l10n.coachHomeQueueTitle,
-          description: l10n.coachHomeQueueDesc,
-          padding: const EdgeInsets.all(8),
-          radius: 14,
-        ),
-        CoachStep(
-          targetKey: _firstCategoryKey,
-          title: l10n.coachHomeStartTitle,
-          description: l10n.coachHomeStartDesc,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          radius: 16,
-          actionLabel: l10n.coachStart,
-        ),
-      ],
+    await _launchSwipeTarget(category: GalleryCategory.allMedia);
+  }
+
+  Future<void> _launchPreferredStartupView() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCategoryName = prefs.getString(_startupSwipeCategoryPrefsKey);
+    final savedFolderId = prefs.getString(_startupSwipeFolderIdPrefsKey);
+    final savedFolderName = prefs.getString(_startupSwipeFolderNamePrefsKey);
+
+    final category = GalleryCategory.values.firstWhere(
+      (value) => value.name == savedCategoryName,
+      orElse: () => GalleryCategory.allMedia,
     );
-    await prefs.setBool(_homeTourPrefsKey, true);
-    if (completed && mounted && _view == _AppView.home) {
-      _openSwipeForCategory(GalleryCategory.allMedia);
+
+    final exists = await _repo.categoryExists(
+      category,
+      folderPathId: savedFolderId,
+    );
+    if (!mounted) return;
+
+    if (!exists) {
+      await _launchSwipeTarget(category: GalleryCategory.allMedia);
+      return;
+    }
+
+    await _launchSwipeTarget(
+      category: category,
+      folderId: savedFolderId,
+      folderName: savedFolderName,
+    );
+  }
+
+  Future<void> _persistStartupSwipeTarget({
+    required GalleryCategory category,
+    String? folderId,
+    String? folderName,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_startupSwipeCategoryPrefsKey, category.name);
+    if (folderId == null || folderId.isEmpty) {
+      await prefs.remove(_startupSwipeFolderIdPrefsKey);
+      await prefs.remove(_startupSwipeFolderNamePrefsKey);
+      return;
+    }
+    await prefs.setString(_startupSwipeFolderIdPrefsKey, folderId);
+    if (folderName != null && folderName.isNotEmpty) {
+      await prefs.setString(_startupSwipeFolderNamePrefsKey, folderName);
+    } else {
+      await prefs.remove(_startupSwipeFolderNamePrefsKey);
     }
   }
 
-  Future<void> _restartTours() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_homeTourPrefsKey, false);
-    await prefs.setBool(_swipeTourPrefsKey, false);
-    if (!mounted) return;
-    setState(() => _view = _AppView.home);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    if (!mounted) return;
-    await _maybeStartHomeTour(force: true);
+  Future<void> _launchSwipeTarget({
+    required GalleryCategory category,
+    String? folderId,
+    String? folderName,
+  }) async {
+    setState(() {
+      _selectedCategory = category;
+      _selectedFolderId = folderId;
+      _selectedFolderName = folderName;
+      _view = _AppView.swipe;
+      _resetSwipeMonetizationSession();
+    });
+    await _persistStartupSwipeTarget(
+      category: category,
+      folderId: folderId,
+      folderName: folderName,
+    );
+    await _loadMedia();
   }
 
   Future<void> _loadHistory() async {
@@ -517,6 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _resetSwipeMonetizationSession() {
     _committedSwipeCount = 0;
     _nextSponsoredCardAt = _firstSponsoredCardAfter;
+    _nextSponsoredCardGap = _sponsoredCardGapStart;
     _showSponsoredCard = false;
     _ignoreAdCountForNextSwipeItemId = null;
   }
@@ -535,7 +555,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _committedSwipeCount >= _nextSponsoredCardAt) {
       _showSponsoredCard = true;
       _sponsoredCardSerial += 1;
-      _nextSponsoredCardAt += _sponsoredCardCooldown;
+      _nextSponsoredCardAt += _nextSponsoredCardGap;
+      _nextSponsoredCardGap += _sponsoredCardGapStep;
     }
   }
 
@@ -548,25 +569,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSwipeForCategory(GalleryCategory category) {
-    setState(() {
-      _selectedCategory = category;
-      _selectedFolderId = null;
-      _selectedFolderName = null;
-      _view = _AppView.swipe;
-      _resetSwipeMonetizationSession();
-    });
-    _loadMedia();
+    unawaited(_launchSwipeTarget(category: category));
   }
 
   void _openSwipeForFolder(AssetPathEntity folder) {
-    setState(() {
-      _selectedCategory = GalleryCategory.allMedia;
-      _selectedFolderId = folder.id;
-      _selectedFolderName = folder.name;
-      _view = _AppView.swipe;
-      _resetSwipeMonetizationSession();
-    });
-    _loadMedia();
+    unawaited(
+      _launchSwipeTarget(
+        category: GalleryCategory.allMedia,
+        folderId: folder.id,
+        folderName: folder.name,
+      ),
+    );
   }
 
   /// Filters out buckets whose names match the predefined categories
@@ -799,6 +812,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onBack: () => setState(() => _view = _AppView.home),
         onOpenQueue: () => setState(() => _view = _AppView.queue),
         queueCount: _deleteQueue.length,
+        swipesUntilSponsoredCard: _showSponsoredCard
+            ? 0
+            : (_nextSponsoredCardAt - _committedSwipeCount).clamp(0, 999999),
         tourPrefsKey: _swipeTourPrefsKey,
         onLoadMore: _hasMoreMedia ? _loadNextMediaPage : null,
         categoryNotFound: _categoryNotFound,
