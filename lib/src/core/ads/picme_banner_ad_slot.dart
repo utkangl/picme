@@ -48,7 +48,7 @@ class _PicmeBannerAdSlotState extends State<PicmeBannerAdSlot>
   @override
   void initState() {
     super.initState();
-    final cached = _adCache[widget.placement];
+    final cached = _takeCachedAd(widget.placement);
     if (cached != null) {
       _ad = cached;
       WidgetsBinding.instance.addPostFrameCallback((_) => _notifyLoaded());
@@ -81,13 +81,23 @@ class _PicmeBannerAdSlotState extends State<PicmeBannerAdSlot>
       _notifyFailed();
       return;
     }
-    setState(() => _ad = loadedAd);
+    setState(() => _ad = _takeCachedAd(widget.placement) ?? loadedAd);
     _notifyLoaded();
   }
 
   @override
   void dispose() {
+    final ad = _ad;
+    _ad = null;
+    if (ad != null) {
+      ad.dispose();
+    }
     super.dispose();
+  }
+
+  /// Removes a preloaded ad from the shared cache so only one widget owns it.
+  static BannerAd? _takeCachedAd(PicmeAdPlacement placement) {
+    return _adCache.remove(placement);
   }
 
   static Future<BannerAd?> preload(PicmeAdPlacement placement) async {
@@ -108,7 +118,7 @@ class _PicmeBannerAdSlotState extends State<PicmeBannerAdSlot>
     if (_pendingLoads[placement] == future) {
       _pendingLoads.remove(placement);
     }
-    if (loadedAd != null) {
+    if (loadedAd != null && !_adCache.containsKey(placement)) {
       _adCache[placement] = loadedAd;
     }
     return loadedAd;
