@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:picme/src/app/app_locale_controller.dart';
 import 'package:picme/src/app/picme_app.dart';
+import 'package:picme/src/core/analytics/app_analytics.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,8 @@ void main() async {
   }
 
   if (firebaseReady) {
+    await AppAnalytics.instance.initialize(firebaseReady: true);
+
     // Forward Flutter framework errors to Crashlytics.
     FlutterError.onError =
         FirebaseCrashlytics.instance.recordFlutterFatalError;

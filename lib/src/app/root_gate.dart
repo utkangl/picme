@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:picme/src/core/analytics/app_analytics.dart';
 import 'package:picme/src/core/ui/app_startup_loading_screen.dart';
 import 'package:picme/src/features/home/presentation/home_screen.dart';
 import 'package:picme/src/features/onboarding/presentation/welcome_screen.dart';
@@ -37,6 +40,7 @@ class _RootGateState extends State<RootGate> {
     // Welcome was already shown — check current permission and go straight to home.
     final permState = await PhotoManager.requestPermissionExtend();
     if (!mounted) return;
+    unawaited(AppAnalytics.instance.logPermissionResult(permState));
     setState(() {
       _permissionState = permState;
       _state = _GateState.home;
@@ -47,6 +51,7 @@ class _RootGateState extends State<RootGate> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_welcomeDoneKey, true);
     if (!mounted) return;
+    unawaited(AppAnalytics.instance.logPermissionResult(result));
     setState(() {
       _permissionState = result;
       _state = _GateState.home;

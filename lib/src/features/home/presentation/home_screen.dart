@@ -6,6 +6,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:picme/l10n/app_localizations.dart';
 import 'package:picme/src/core/ads/admob_config.dart';
 import 'package:picme/src/core/ads/picme_banner_ad_slot.dart';
+import 'package:picme/src/core/analytics/app_analytics.dart';
 import 'package:picme/src/core/models/delete_history_entry.dart';
 import 'package:picme/src/core/models/media_item.dart';
 import 'package:picme/src/core/models/swipe_action_record.dart';
@@ -208,6 +209,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _setAppView(_AppView view) {
+    final previous = _view;
+    if (previous == _AppView.swipe && view != _AppView.swipe) {
+      unawaited(
+        AppAnalytics.instance.logSwipeSessionEnd(
+          swipeCount: _committedSwipeCount,
+          queueCount: _deleteQueue.length,
+          category: _selectedCategory.name,
+        ),
+      );
+    }
+    if (view == _AppView.queue && previous != _AppView.queue) {
+      unawaited(
+        AppAnalytics.instance.logQueueOpened(itemCount: _deleteQueue.length),
+      );
+    }
+    setState(() => _view = view);
+  }
+
   Future<void> _launchSwipeTarget({
     required GalleryCategory category,
     String? folderId,
@@ -220,6 +240,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _view = _AppView.swipe;
       _resetSwipeMonetizationSession();
     });
+    unawaited(
+      AppAnalytics.instance.logSwipeSessionStart(
+        category: category.name,
+        hasFolder: folderId != null,
+      ),
+    );
     await _persistStartupSwipeTarget(
       category: category,
       folderId: folderId,
@@ -555,6 +581,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _committedSwipeCount >= _nextSponsoredCardAt) {
       _showSponsoredCard = true;
       _sponsoredCardSerial += 1;
+      unawaited(
+        AppAnalytics.instance.logSponsoredAdShown(serial: _sponsoredCardSerial),
+      );
       _nextSponsoredCardAt += _nextSponsoredCardGap;
       _nextSponsoredCardGap += _sponsoredCardGapStep;
     }
@@ -734,6 +763,12 @@ class _HomeScreenState extends State<HomeScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.itemsDeleted(deletedIds.length))),
       );
+      unawaited(
+        AppAnalytics.instance.logQueueDeleteConfirmed(
+          itemCount: deletedIds.length,
+          totalBytes: totalBytes,
+        ),
+      );
       unawaited(ReviewPrompter.recordBatchAndMaybePrompt());
     } catch (error) {
       if (!mounted) return;
@@ -757,7 +792,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return;
         }
         if (!didPop && _view != _AppView.home) {
-          setState(() => _view = _AppView.home);
+          _setAppView(_AppView.home);
         }
       },
       child: Scaffold(
@@ -769,8 +804,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 current: _view,
                 queueCount: _deleteQueue.length,
                 reviewKey: _reviewNavKey,
-                onHome: () => setState(() => _view = _AppView.home),
-                onQueue: () => setState(() => _view = _AppView.queue),
+                onHome: () => _setAppView(_AppView.home),
+                onQueue: () => _setAppView(_AppView.queue),
               ),
       ),
     );
@@ -809,8 +844,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onRevertLast: _revertLastSwipe,
         canRevert: _actionHistory.isNotEmpty,
         onRetry: _loadMedia,
-        onBack: () => setState(() => _view = _AppView.home),
-        onOpenQueue: () => setState(() => _view = _AppView.queue),
+        onBack: () => _setAppView(_AppView.home),
+        onOpenQueue: () => _setAppView(_AppView.queue),
         queueCount: _deleteQueue.length,
         swipesUntilSponsoredCard: _showSponsoredCard
             ? 0
@@ -851,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onOpenHistory: _openHistory,
             onOpenCategory: _openSwipeForCategory,
             onOpenFolder: _openSwipeForFolder,
-            onOpenQueue: () => setState(() => _view = _AppView.queue),
+            onOpenQueue: () => _setAppView(_AppView.queue),
             onOpenKept: _openKeptList,
           ),
         ),
@@ -862,7 +897,7 @@ class _HomeScreenState extends State<HomeScreen> {
       queue: _deleteQueue,
       onRemove: _removeFromQueue,
       onConfirmDelete: _confirmDeleteQueue,
-      onClose: () => setState(() => _view = _AppView.home),
+      onClose: () => _setAppView(_AppView.home),
     );
 
     return IndexedStack(

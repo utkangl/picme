@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:picme/src/core/ads/admob_config.dart';
 import 'package:picme/src/core/ads/picme_banner_ad_slot.dart';
+import 'package:picme/src/core/analytics/app_analytics.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:picme/l10n/app_localizations.dart';
@@ -343,6 +344,11 @@ class _SwipeScreenState extends State<SwipeScreen>
     if (!widget.showSponsoredCard || _sponsoredExposureStarted) return;
     _sponsoredLoadTimeoutTimer?.cancel();
     _sponsoredExposureStarted = true;
+    unawaited(
+      AppAnalytics.instance.logSponsoredAdLoaded(
+        serial: widget.sponsoredCardSerial,
+      ),
+    );
     _sponsoredLockController
       ..stop()
       ..forward(from: 0);
@@ -351,6 +357,11 @@ class _SwipeScreenState extends State<SwipeScreen>
   void _handleSponsoredAdFailed() {
     _sponsoredLoadTimeoutTimer?.cancel();
     if (!widget.showSponsoredCard) return;
+    unawaited(
+      AppAnalytics.instance.logSponsoredAdFailed(
+        serial: widget.sponsoredCardSerial,
+      ),
+    );
     widget.onDismissSponsoredCard();
   }
 
@@ -789,6 +800,12 @@ class _SwipeScreenState extends State<SwipeScreen>
 
   void _resolveSwipeAction(_SwipeAction action) {
     if (action == _SwipeAction.dismissSponsored) {
+      unawaited(
+        AppAnalytics.instance.logSponsoredAdDismissed(
+          serial: widget.sponsoredCardSerial,
+          wasUnlocked: !_isSponsoredLocked,
+        ),
+      );
       widget.onDismissSponsoredCard();
       return;
     }
